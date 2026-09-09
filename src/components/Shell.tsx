@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import {
   Activity,
   BadgePercent,
+  Percent,
   Bike,
   Building2,
   CalendarDays,
@@ -76,6 +77,7 @@ const GROUPS: { label: string; items: { to: string; label: string; icon: typeof 
       { to: '/landmarks', label: 'Delivery zones', icon: MapPin },
       { to: '/carousel', label: 'Carousel', icon: Images },
       { to: '/broadcast', label: 'Broadcast', icon: Megaphone },
+      { to: '/commissions', label: 'Commission rates', icon: Percent },
       { to: '/settings', label: 'Platform settings', icon: Settings },
     ],
   },

@@ -378,6 +378,31 @@ export const adminApi = {
     unwrap<Row>(api.patch(`/api/admin/delivery-landmarks/${id}`, body)),
   deleteLandmark: (id: string) => unwrap<Row>(api.delete(`/api/admin/delivery-landmarks/${id}`)),
 
+  /*
+   * Per-category commission.
+   *
+   * Note the path: this router mounts at /api/category-commission, not under
+   * /api/admin like everything else here. It is admin-gated all the same — the
+   * guard sits on the mount rather than in the path.
+   *
+   * Reading the list seeds the platform defaults into Firestore the first time
+   * it is called, so an unconfigured backend and a configured one look the
+   * same from this console: a full table.
+   */
+  categoryCommissions: () => unwrap<Row[]>(api.get('/api/category-commission')),
+  createCategoryCommission: (body: {
+    categoryId: string
+    categoryName: string
+    commissionPercent: number
+    active?: boolean
+  }) => unwrap<Row>(api.post('/api/category-commission', body)),
+  updateCategoryCommission: (
+    id: string,
+    body: { categoryName?: string; commissionPercent?: number; active?: boolean },
+  ) => unwrap<Row>(api.patch(`/api/category-commission/${id}`, body)),
+  deleteCategoryCommission: (id: string) =>
+    unwrap<Row>(api.delete(`/api/category-commission/${id}`)),
+
   broadcast: (body: Row) => unwrap<Row>(api.post('/api/admin/broadcast', body)),
   broadcastHistory: () => unwrap<Row>(api.get('/api/admin/broadcast/history')),
 

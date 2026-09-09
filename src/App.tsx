@@ -31,6 +31,7 @@ const Landmarks = lazy(() => import('./pages/Landmarks'))
 const Carousel = lazy(() => import('./pages/Carousel'))
 const Events = lazy(() => import('./pages/Events'))
 const Broadcast = lazy(() => import('./pages/Broadcast'))
+const Commissions = lazy(() => import('./pages/Commissions'))
 const Settings = lazy(() => import('./pages/Settings'))
 
 const queryClient = new QueryClient({
@@ -114,6 +115,7 @@ export default function App() {
                 ['/landmarks', <Landmarks key="l" />],
                 ['/carousel', <Carousel key="ca" />],
                 ['/broadcast', <Broadcast key="br" />],
+                ['/commissions', <Commissions key="cm" />],
                 ['/settings', <Settings key="s" />],
               ] as const
             ).map(([path, element]) => (
