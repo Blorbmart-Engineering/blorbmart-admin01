@@ -1,7 +1,23 @@
 import axios, { AxiosError } from 'axios'
 import { auth } from './firebase'
 
-export const BASE_URL = import.meta.env.VITE_API_URL ?? 'https://blorbmart-tr1i.onrender.com'
+const FALLBACK_API_URL = 'https://blorbmart-tr1i.onrender.com'
+
+/**
+ * The API host.
+ *
+ * `??` is deliberately not used here. A hosting dashboard holding
+ * `VITE_API_URL` with an empty value builds to an empty string, not
+ * `undefined` — so `??` keeps it, axios reads '' as "same origin", and every
+ * call lands on the static host serving this console instead of the backend.
+ * That host answers 404 to /api/*, so the admin gate never resolves and the
+ * console looks broken to someone who signed in perfectly well. This shipped
+ * twice: first on the rider app, then here.
+ */
+const configuredApiUrl = import.meta.env.VITE_API_URL?.trim()
+export const BASE_URL = configuredApiUrl
+  ? configuredApiUrl.replace(/[/]+$/, '')
+  : FALLBACK_API_URL
 
 /**
  * 45s, not the usual 20.
