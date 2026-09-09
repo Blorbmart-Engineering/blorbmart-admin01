@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { ShieldAlert, ShieldCheck } from 'lucide-react'
 import { auth } from '../lib/firebase'
-import { useAdmin } from '../contexts/AdminContext'
+import { useSession } from '../contexts/SessionContext'
 import { Button, Input } from '../components/ui'
 
 /**
@@ -13,7 +13,7 @@ import { Button, Input } from '../components/ui'
  * signs in correctly gets bounced somewhere with no explanation of why.
  */
 export default function Login() {
-  const { forbidden, user, logout } = useAdmin()
+  const { forbidden, user, logout } = useSession()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
@@ -49,12 +49,19 @@ export default function Login() {
           <div className="mx-auto mb-5 grid h-12 w-12 place-items-center rounded-xl bg-bad-soft">
             <ShieldAlert className="h-6 w-6 text-bad" aria-hidden />
           </div>
-          <h1 className="text-[20px] font-bold text-ink">This account is not an admin</h1>
+          <h1 className="text-[20px] font-bold text-ink">This account has no access here</h1>
           <p className="mt-2 text-[13.5px] leading-relaxed text-ink-soft">
-            You are signed in as <span className="font-semibold text-ink">{user.email}</span>, but it does not
-            have admin access. Someone with access can grant it by setting{' '}
+            You are signed in as <span className="font-semibold text-ink">{user.email}</span>, but it is
+            neither an administrator nor the head of operations for a campus.
+          </p>
+          {/* Both doors are named because this screen is now reached two ways:
+              by someone who was never an admin, and by a head of operations
+              whose campus access has been revoked. Naming only the first sends
+              the second to ask the wrong person for the wrong thing. */}
+          <p className="mt-2 text-[13px] leading-relaxed text-ink-faint">
+            An admin can grant console access by setting{' '}
             <code className="rounded bg-raised px-1 py-0.5 text-[12px] text-ink">role: "admin"</code> on your
-            user document.
+            user document, or assign you to a campus from the Campuses screen.
           </p>
           <div className="mt-6">
             <Button onClick={logout}>Sign in as someone else</Button>

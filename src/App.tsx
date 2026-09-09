@@ -2,8 +2,9 @@ import { lazy, Suspense, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
-import { AdminProvider, useAdmin } from './contexts/AdminContext'
+import { SessionProvider, useSession } from './contexts/SessionContext'
 import Shell from './components/Shell'
+import CampusShell from './components/CampusShell'
 import { Skeleton } from './components/ui'
 import Login from './pages/Login'
 
@@ -33,6 +34,14 @@ const Events = lazy(() => import('./pages/Events'))
 const Broadcast = lazy(() => import('./pages/Broadcast'))
 const Commissions = lazy(() => import('./pages/Commissions'))
 const Settings = lazy(() => import('./pages/Settings'))
+
+/* The campus console. A head of operations never loads any of the above. */
+const SetPassword = lazy(() => import('./pages/campus/SetPassword'))
+const CampusDashboard = lazy(() => import('./pages/campus/CampusDashboard'))
+const CampusOrders = lazy(() => import('./pages/campus/CampusOrders'))
+const CampusVendors = lazy(() => import('./pages/campus/CampusVendors'))
+const CampusRiders = lazy(() => import('./pages/campus/CampusRiders'))
+const CampusBroadcast = lazy(() => import('./pages/campus/CampusBroadcast'))
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -71,17 +80,20 @@ function Splash() {
 }
 
 /**
- * Everything behind the console requires an admin the *server* recognises.
+ * Everything behind the admin console requires an admin the *server*
+ * recognises.
  *
- * `forbidden` is handled by rendering the login screen rather than redirecting,
- * so the "not an admin" explanation appears at whatever URL was opened instead
- * of bouncing somebody to a path that tells them nothing.
+ * A head of operations who lands on an admin URL is redirected to their own
+ * console rather than shown the "not an admin" wall — they are signed in
+ * correctly and there is somewhere for them to be, which is not the case for
+ * the buyer that wall was written for.
  */
 function Guarded({ children }: { children: ReactNode }) {
-  const { user, identity, loading, forbidden } = useAdmin()
+  const { user, identity, role, loading } = useSession()
 
   if (loading) return <Splash />
-  if (!user || forbidden || !identity?.admin) return <Login />
+  if (role === 'head_of_ops') return <Navigate to="/campus" replace />
+  if (!user || role !== 'admin' || !identity?.admin) return <Login />
 
   return (
     <Shell>
@@ -90,10 +102,55 @@ function Guarded({ children }: { children: ReactNode }) {
   )
 }
 
+/**
+ * The campus console.
+ *
+ * `mustChangePassword` is checked here rather than inside a route, so there is
+ * no campus URL that reaches past it. Somebody arriving from the credentials
+ * email is holding a password that was generated for them and has been sitting
+ * in an inbox; replacing it is the first thing that happens, not a task they
+ * can navigate around.
+ */
+function CampusGuarded({ children }: { children: ReactNode }) {
+  const { user, campus, role, loading } = useSession()
+
+  if (loading) return <Splash />
+  if (role === 'admin') return <Navigate to="/" replace />
+  if (!user || role !== 'head_of_ops') return <Login />
+
+  if (campus?.mustChangePassword) {
+    return (
+      <Suspense fallback={<Splash />}>
+        <SetPassword />
+      </Suspense>
+    )
+  }
+
+  return (
+    <CampusShell>
+      <Suspense fallback={<PageSkeleton />}>{children}</Suspense>
+    </CampusShell>
+  )
+}
+
+/**
+ * Sends each role to the console it belongs in.
+ *
+ * The credentials email links to `/campus`, so a head of operations lands
+ * there directly. This exists for the person who bookmarks `/` or types the
+ * bare domain, and for an admin who follows a campus link out of habit.
+ */
+function RoleHome() {
+  const { role, loading } = useSession()
+  if (loading) return <Splash />
+  if (role === 'head_of_ops') return <Navigate to="/campus" replace />
+  return <Navigate to="/" replace />
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AdminProvider>
+      <SessionProvider>
         <BrowserRouter>
           <Routes>
             {(
@@ -122,7 +179,19 @@ export default function App() {
               <Route key={path} path={path} element={<Guarded>{element}</Guarded>} />
             ))}
 
-            <Route path="*" element={<Navigate to="/" replace />} />
+            {(
+              [
+                ['/campus', <CampusDashboard key="cd" />],
+                ['/campus/orders', <CampusOrders key="co" />],
+                ['/campus/vendors', <CampusVendors key="cv" />],
+                ['/campus/riders', <CampusRiders key="cr" />],
+                ['/campus/broadcast', <CampusBroadcast key="cb" />],
+              ] as const
+            ).map(([path, element]) => (
+              <Route key={path} path={path} element={<CampusGuarded>{element}</CampusGuarded>} />
+            ))}
+
+            <Route path="*" element={<RoleHome />} />
           </Routes>
         </BrowserRouter>
 
@@ -142,7 +211,7 @@ export default function App() {
             error: { iconTheme: { primary: '#f43f5e', secondary: '#0a0d12' } },
           }}
         />
-      </AdminProvider>
+      </SessionProvider>
     </QueryClientProvider>
   )
 }

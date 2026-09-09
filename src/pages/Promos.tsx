@@ -18,6 +18,16 @@ import {
   type Column,
 } from '../components/ui'
 
+/**
+ * The server normalizes `percentage` to `percent` on write, but codes created
+ * before it did that are still stored under the old spelling. Both read as a
+ * percentage here so the table does not start rendering "10%" as "₦10".
+ */
+const isPercent = (type: unknown) => {
+  const raw = String(type ?? '').toLowerCase()
+  return raw !== 'fixed' && raw !== 'flat' && raw !== 'amount'
+}
+
 /** The list endpoint returns either an array or `{promos: [...]}` depending on age. */
 const asRows = (data: unknown): Row[] => {
   if (Array.isArray(data)) return data as Row[]
@@ -30,7 +40,7 @@ export default function Promos() {
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState({
     code: '',
-    type: 'percentage',
+    type: 'percent',
     value: '',
     minSubtotal: '',
     maxDiscount: '',
@@ -56,7 +66,7 @@ export default function Promos() {
       toast.success('Promo code created')
       queryClient.invalidateQueries({ queryKey: ['promos'] })
       setOpen(false)
-      setForm({ code: '', type: 'percentage', value: '', minSubtotal: '', maxDiscount: '', usageLimit: '', expiresAt: '' })
+      setForm({ code: '', type: 'percent', value: '', minSubtotal: '', maxDiscount: '', usageLimit: '', expiresAt: '' })
     },
     onError: (error) => toast.error(errorMessage(error, 'Could not create the code.')),
   })
@@ -90,7 +100,7 @@ export default function Promos() {
       key: 'value',
       header: 'Discount',
       render: (p) =>
-        String(p.type) === 'percentage' ? `${text(p.value, '0')}%` : money(p.value),
+        isPercent(p.type) ? `${text(p.value, '0')}%` : money(p.value),
     },
     { key: 'min', header: 'Min spend', align: 'right', render: (p) => money(p.minSubtotal) },
     {
@@ -209,11 +219,11 @@ export default function Promos() {
               onChange={(e) => setForm({ ...form, type: e.target.value })}
               className="w-40"
             >
-              <option value="percentage">Percentage</option>
+              <option value="percent">Percentage</option>
               <option value="fixed">Fixed amount</option>
             </Select>
             <Input
-              label={form.type === 'percentage' ? 'Percent off' : 'Amount off (₦)'}
+              label={form.type === 'percent' ? 'Percent off' : 'Amount off (₦)'}
               type="number"
               inputMode="numeric"
               value={form.value}
@@ -231,7 +241,7 @@ export default function Promos() {
             />
             {/* Only meaningful for percentage codes: it is the cap that stops
                 "20% off" costing an unbounded amount on a large order. */}
-            {form.type === 'percentage' && (
+            {form.type === 'percent' && (
               <Input
                 label="Max discount (₦)"
                 type="number"

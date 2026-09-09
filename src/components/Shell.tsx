@@ -25,7 +25,7 @@ import {
   HeartPulse,
   X,
 } from 'lucide-react'
-import { useAdmin } from '../contexts/AdminContext'
+import { useSession } from '../contexts/SessionContext'
 import { cn } from './ui'
 
 /**
@@ -120,7 +120,7 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function AccountMenu() {
-  const { identity, logout } = useAdmin()
+  const { identity, logout } = useSession()
   const [open, setOpen] = useState(false)
 
   return (

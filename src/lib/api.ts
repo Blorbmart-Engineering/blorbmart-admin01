@@ -168,6 +168,26 @@ export interface BillPayment {
   createdAt: number | null
 }
 
+export interface CampusMaintenance {
+  enabled: boolean
+  message: string | null
+  startedAt?: string | null
+  startedBy?: string | null
+  endedAt?: string | null
+}
+
+export interface CampusHeadOfOps {
+  userId: string
+  email: string | null
+  name: string | null
+  phone: string | null
+  status: 'active' | 'revoked'
+  assignedAt: string | null
+  assignedBy: string | null
+  revokedAt: string | null
+  mustChangePassword: boolean
+}
+
 export interface CampusRow {
   id: string
   name: string
@@ -180,6 +200,52 @@ export interface CampusRow {
   activeRiders: number
   buyers: number
   live: boolean
+  active: boolean
+  maintenance: CampusMaintenance
+  headOfOps: CampusHeadOfOps | null
+  /** 'seed' ships in the backend's static registry; 'firestore' was added here. */
+  source: 'seed' | 'firestore'
+}
+
+/** The management view: identity and operational state, without the counts. */
+export interface CampusRecord {
+  id: string
+  name: string
+  shortName: string
+  state: string | null
+  city: string | null
+  active: boolean
+  source: 'seed' | 'firestore'
+  maintenance: CampusMaintenance
+  headOfOps: CampusHeadOfOps | null
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+export interface AssignHeadResult {
+  campus: CampusRecord
+  userId: string
+  email: string
+  accountCreated: boolean
+  emailed: boolean
+  emailError: string | null
+  /**
+   * Present only when the credentials email did not send. The backend
+   * withholds it on success rather than putting a live password into a
+   * response that lands in browser history and error trackers.
+   */
+  temporaryPassword?: string
+}
+
+export interface BroadcastResult {
+  campus: { id: string; name: string }
+  audience: string
+  channels: string[]
+  result: {
+    inApp?: { sentCount: number; totalUsers: number; skipped?: boolean }
+    push?: { sentCount: number; failedCount: number; totalTokens: number; skipped?: boolean }
+    email?: { sentCount: number; failedCount: number; totalEmails: number; skipped?: boolean }
+  }
 }
 
 export interface Delivery {
@@ -321,6 +387,67 @@ export const adminApi = {
       untagged: { stores: number; products: number }
     }>(api.get('/api/admin/campuses')),
 
+  /* ── Campus management (routes/campusAdmin.js) ─────────────────────── */
+
+  /** Identity and operational state only — no per-campus aggregate counts. */
+  manageCampuses: () =>
+    unwrap<{ campuses: CampusRecord[]; count: number }>(api.get('/api/admin/campuses/manage')),
+
+  createCampus: (body: {
+    name: string
+    shortName?: string
+    state?: string
+    city?: string
+    aliases?: string[]
+  }) => unwrap<CampusRecord>(api.post('/api/admin/campuses', body)),
+
+  /**
+   * Presentation and availability only.
+   *
+   * There is no id here on purpose: a campus id is written onto every user,
+   * store, product and rider on that campus, and changing it detaches all of
+   * them silently. The backend has no branch that accepts one either.
+   */
+  updateCampus: (
+    id: string,
+    body: { name?: string; shortName?: string; state?: string; city?: string; active?: boolean },
+  ) => unwrap<CampusRecord>(api.patch(`/api/admin/campuses/${id}`, body)),
+
+  assignHeadOfOps: (id: string, body: { email: string; name?: string; phone?: string }) =>
+    unwrap<AssignHeadResult>(api.post(`/api/admin/campuses/${id}/head-of-ops`, body)),
+
+  revokeHeadOfOps: (id: string, reason?: string) =>
+    unwrap<{ campus: CampusRecord; userId: string; accountDisabled: boolean; emailed: boolean }>(
+      // A body on DELETE is unusual but supported by both axios and the route,
+      // and the reason belongs with the act rather than in a query string
+      // where it would end up in server access logs.
+      api.delete(`/api/admin/campuses/${id}/head-of-ops`, { data: { reason } }),
+    ),
+
+  resetHeadOfOpsPassword: (id: string) =>
+    unwrap<{ emailed: boolean; emailError: string | null; email: string; temporaryPassword?: string }>(
+      api.post(`/api/admin/campuses/${id}/head-of-ops/reset-password`, {}),
+    ),
+
+  setCampusMaintenance: (
+    id: string,
+    body: { enabled: boolean; message?: string; notify?: boolean; channels?: string[] },
+  ) =>
+    unwrap<{ campus: CampusRecord; notified: boolean; result: BroadcastResult['result'] }>(
+      api.post(`/api/admin/campuses/${id}/maintenance`, body),
+    ),
+
+  broadcastToCampus: (
+    id: string,
+    body: {
+      title: string
+      subject?: string
+      body: string
+      audience?: 'all' | 'buyers' | 'vendors' | 'riders'
+      channels?: string[]
+    },
+  ) => unwrap<BroadcastResult>(api.post(`/api/admin/campuses/${id}/broadcast`, body)),
+
   /* Pre-existing admin router (routes/admin.js) */
   metrics: () => unwrap<Row>(api.get('/api/admin/metrics')),
 
@@ -456,6 +583,137 @@ export const adminApi = {
     a.remove()
     URL.revokeObjectURL(url)
   },
+}
+
+/* ══════════════════ Campus head of operations ═══════════════════════════ */
+
+export interface CampusIdentity {
+  uid: string
+  email: string | null
+  name: string | null
+  role: 'head_of_ops'
+  /**
+   * True from the moment the account is provisioned until they set their own
+   * password. The console forces the change-password screen on this alone.
+   */
+  mustChangePassword: boolean
+  campus: {
+    id: string
+    name: string
+    shortName: string
+    active: boolean
+    maintenance: CampusMaintenance
+  } | null
+}
+
+export interface CampusOverview {
+  campus: {
+    id: string
+    name: string
+    shortName: string
+    city: string | null
+    state: string | null
+    active: boolean
+    maintenance: CampusMaintenance
+  } | null
+  counts: {
+    stores: number
+    products: number
+    riders: number
+    activeRiders: number
+    buyers: number
+    pendingVendors: number
+  }
+  live: boolean
+}
+
+export interface CampusOrder {
+  id: string
+  orderId: string
+  status: string
+  paymentStatus: string | null
+  subtotal: number
+  deliveryFee: number
+  discountAmount: number
+  totalAmount: number
+  itemCount: number
+  customerName: string | null
+  address: string | null
+  riderId: string | null
+  createdAt: number | null
+}
+
+export interface CampusVendor {
+  id: string
+  businessName: string | null
+  businessEmail: string | null
+  businessPhone: string | null
+  status: string
+  sellerType: string | null
+  createdAt: number | null
+}
+
+export interface CampusRider {
+  uid: string
+  name: string | null
+  email: string | null
+  phone: string | null
+  status: string
+  vehicleType: string | null
+  online: boolean
+  deliveriesCompleted: number
+  rating: number
+  lastSeenAt: number | null
+}
+
+/**
+ * The head of operations' API.
+ *
+ * Every call here is scoped to their own campus by the server, from their user
+ * document — there is deliberately no campus argument on any of them. A campus
+ * id in this file would be a lie about where the boundary is.
+ */
+export const campusApi = {
+  me: () => unwrap<CampusIdentity>(api.get('/api/head-of-ops/me')),
+
+  /**
+   * Usable while `mustChangePassword` is still true — the account is holding
+   * its emailed temporary password at that point, and this is how it stops.
+   */
+  setPassword: (newPassword: string) =>
+    unwrap<{ changed: boolean }>(api.post('/api/head-of-ops/password', { newPassword })),
+
+  overview: () => unwrap<CampusOverview>(api.get('/api/head-of-ops/overview')),
+
+  orders: (params: Q = {}) =>
+    unwrap<{ count: number; orders: CampusOrder[]; scannedWindow: number; windowLimit: number }>(
+      api.get('/api/head-of-ops/orders', { params: clean(params) }),
+    ),
+
+  vendors: (params: Q = {}) =>
+    unwrap<{ count: number; vendors: CampusVendor[] }>(
+      api.get('/api/head-of-ops/vendors', { params: clean(params) }),
+    ),
+
+  setVendorStatus: (vendorId: string, status: string, reason?: string) =>
+    unwrap<{ vendorId: string; status: string }>(
+      api.patch(`/api/head-of-ops/vendors/${vendorId}/status`, { status, reason }),
+    ),
+
+  riders: () => unwrap<{ count: number; riders: CampusRider[] }>(api.get('/api/head-of-ops/riders')),
+
+  broadcast: (body: {
+    title: string
+    subject?: string
+    body: string
+    audience?: 'all' | 'buyers' | 'vendors' | 'riders'
+    channels?: string[]
+  }) => unwrap<Omit<BroadcastResult, 'campus'>>(api.post('/api/head-of-ops/broadcast', body)),
+
+  setMaintenance: (body: { enabled: boolean; message?: string; notify?: boolean; channels?: string[] }) =>
+    unwrap<{ campus: CampusRecord; notified: boolean; result: BroadcastResult['result'] }>(
+      api.post('/api/head-of-ops/maintenance', body),
+    ),
 }
 
 export default api
