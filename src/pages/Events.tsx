@@ -82,6 +82,7 @@ const emptyTier = (): TierDraft => ({
   price: 0,
   quantity: 0,
   maxPerOrder: 0,
+  maxPerAccount: 0,
 })
 
 const emptyForm = (): FormState => ({
@@ -143,6 +144,7 @@ const formFor = (event: BlorbEvent): FormState => ({
         price: t.price,
         quantity: t.quantity,
         maxPerOrder: t.maxPerOrder,
+        maxPerAccount: t.maxPerAccount ?? 0,
       }))
     : [emptyTier()],
 })
@@ -247,6 +249,7 @@ export default function Events() {
         price: Math.max(0, Number(t.price) || 0),
         quantity: Math.max(0, Math.floor(Number(t.quantity) || 0)),
         maxPerOrder: Math.max(0, Math.floor(Number(t.maxPerOrder) || 0)),
+        maxPerAccount: Math.max(0, Math.floor(Number(t.maxPerAccount) || 0)),
       }))
 
     if (!ticketTypes.length) return toast.error('Add at least one ticket type, even a free one.')
@@ -534,6 +537,18 @@ export default function Events() {
                       value={String(tier.maxPerOrder)}
                       onChange={(e) => patchTier(i, { maxPerOrder: Number(e.target.value) || 0 })}
                       className="w-36"
+                    />
+                    {/* The cap that actually holds. Max per order limits one
+                        basket, so somebody who wants ten takes two five
+                        times; this counts what the account already holds. */}
+                    <Input
+                      label="Max per person (0 = no cap)"
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      value={String(tier.maxPerAccount)}
+                      onChange={(e) => patchTier(i, { maxPerAccount: Number(e.target.value) || 0 })}
+                      className="w-52"
                     />
                     {form.ticketTypes.length > 1 && (
                       <Button

@@ -275,6 +275,8 @@ export interface TicketTier {
   remaining: number | null
   soldOut: boolean
   maxPerOrder: number
+  /** 0 = no cap. How many one account may hold in total, across orders. */
+  maxPerAccount: number
   salesEndAt: string | null
 }
 
@@ -333,6 +335,7 @@ export interface EventDraft {
     price: number
     quantity: number
     maxPerOrder: number
+    maxPerAccount: number
   }[]
 }
 
