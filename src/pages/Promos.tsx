@@ -23,8 +23,14 @@ import {
  * before it did that are still stored under the old spelling. Both read as a
  * percentage here so the table does not start rendering "10%" as "₦10".
  */
+const isFreeDelivery = (type: unknown) =>
+  ['free_delivery', 'freedelivery', 'free-delivery', 'delivery'].includes(
+    String(type ?? '').toLowerCase(),
+  )
+
 const isPercent = (type: unknown) => {
   const raw = String(type ?? '').toLowerCase()
+  if (isFreeDelivery(raw)) return false
   return raw !== 'fixed' && raw !== 'flat' && raw !== 'amount'
 }
 
@@ -100,7 +106,11 @@ export default function Promos() {
       key: 'value',
       header: 'Discount',
       render: (p) =>
-        isPercent(p.type) ? `${text(p.value, '0')}%` : money(p.value),
+        isFreeDelivery(p.type)
+          ? 'Free delivery'
+          : isPercent(p.type)
+            ? `${text(p.value, '0')}%`
+            : money(p.value),
     },
     { key: 'min', header: 'Min spend', align: 'right', render: (p) => money(p.minSubtotal) },
     {
@@ -221,15 +231,25 @@ export default function Promos() {
             >
               <option value="percent">Percentage</option>
               <option value="fixed">Fixed amount</option>
+              <option value="free_delivery">Free delivery</option>
             </Select>
-            <Input
-              label={form.type === 'percent' ? 'Percent off' : 'Amount off (₦)'}
-              type="number"
-              inputMode="numeric"
-              value={form.value}
-              onChange={(e) => setForm({ ...form, value: e.target.value })}
-              className="w-40"
-            />
+            {/* Free delivery has no amount to state: the fee is whatever the
+                order turns out to cost to deliver, and the rider is paid it
+                in full either way — the waiver is carried by the platform. */}
+            {form.type === 'free_delivery' ? (
+              <p className="self-end pb-2 text-sm text-ink-muted">
+                Waives the delivery fee. The rider is still paid in full.
+              </p>
+            ) : (
+              <Input
+                label={form.type === 'percent' ? 'Percent off' : 'Amount off (₦)'}
+                type="number"
+                inputMode="numeric"
+                value={form.value}
+                onChange={(e) => setForm({ ...form, value: e.target.value })}
+                className="w-40"
+              />
+            )}
           </Toolbar>
           <Toolbar className="gap-3">
             <Input
