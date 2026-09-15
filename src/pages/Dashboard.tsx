@@ -4,15 +4,18 @@ import {
   Bike,
   Building2,
   Package,
+  PiggyBank,
   Receipt,
   RefreshCw,
   ShoppingBag,
   TrendingUp,
+  Truck,
   Users,
   Wallet,
 } from 'lucide-react'
 import { adminApi, errorMessage } from '../lib/api'
 import { compact, count, money } from '../lib/format'
+import { profitApi } from '../lib/profit'
 import { Badge, Button, Card, PageHeader, Stat, statusTone, ErrorState } from '../components/ui'
 
 /**
@@ -38,6 +41,13 @@ export default function Dashboard() {
     staleTime: 120_000,
   })
 
+  // Same key as the Profit page's "This month", so opening it is instant.
+  const profit = useQuery({
+    queryKey: ['profit', 'month', null, null],
+    queryFn: () => profitApi.report({ range: 'month' }),
+    staleTime: 60_000,
+  })
+
   const data = overview.data
   const loading = overview.isLoading
 
@@ -54,6 +64,7 @@ export default function Dashboard() {
 
   const queues = data?.queues
   const needsAttention = (queues?.ridersPending ?? 0) + (queues?.vendorsPending ?? 0)
+  const earned = profit.data?.totals
 
   const statusEntries = Object.entries(data?.orderStatus ?? {}).sort((a, b) => b[1] - a[1])
 
@@ -70,6 +81,7 @@ export default function Dashboard() {
             onClick={() => {
               overview.refetch()
               wallets.refetch()
+              profit.refetch()
             }}
           >
             Refresh
@@ -119,6 +131,42 @@ export default function Dashboard() {
             />
           </Link>
         </div>
+      </section>
+
+      {/* ── Earnings: what the platform itself made ──────────────────── */}
+      <section className="mb-5">
+        <h2 className="mb-2.5 text-[12px] font-bold uppercase tracking-wide text-ink-faint">Platform profit · this month</h2>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Link to="/profit" className="transition-transform hover:-translate-y-0.5">
+            <Stat
+              label="Profit"
+              value={money(earned?.profit)}
+              hint={`${count(earned?.orders)} delivered orders · open the breakdown`}
+              icon={PiggyBank}
+              tone={(earned?.profit ?? 0) < 0 ? 'bad' : 'good'}
+              loading={profit.isLoading}
+            />
+          </Link>
+          <Link to="/profit" className="transition-transform hover:-translate-y-0.5">
+            <Stat
+              label="Service fees"
+              value={money(earned?.serviceFee)}
+              hint="Charged on every order"
+              icon={Receipt}
+              loading={profit.isLoading}
+            />
+          </Link>
+          <Link to="/profit" className="transition-transform hover:-translate-y-0.5">
+            <Stat
+              label={`${profit.data?.deliveryCommissionPercent ?? 10}% of delivery`}
+              value={money(earned?.deliveryCommission)}
+              hint={`Of ${money(earned?.deliveryFee)} in delivery fees`}
+              icon={Truck}
+              loading={profit.isLoading}
+            />
+          </Link>
+        </div>
+        {profit.isError && <p className="mt-2 text-[12px] text-bad">{errorMessage(profit.error)}</p>}
       </section>
 
       {/* ── Trade ────────────────────────────────────────────────────── */}

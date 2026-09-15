@@ -217,7 +217,7 @@ export default function Commissions() {
     <>
       <PageHeader
         title="Commission rates"
-        subtitle="What the platform keeps from a seller on each order, by category."
+        subtitle="Retired — the platform no longer takes a cut of product prices."
         actions={
           <Button size="sm" variant="primary" icon={Plus} onClick={() => setOpen(true)}>
             Add category
@@ -227,13 +227,10 @@ export default function Commissions() {
 
       <Card className="mb-4">
         <p className="text-[12.5px] leading-relaxed text-ink-soft">
-          Seller settlement uses a category rate only while it is{' '}
-          <span className="font-semibold text-ink">Applied</span>. A category that is not
-          applied — or has no row here at all — falls back to the vendor&apos;s own
-          negotiated rate, and to the platform default where they have none.{' '}
-          <span className="font-semibold text-ink">
-            Stopping a rate does not make commission zero.
-          </span>
+          <span className="font-semibold text-ink">None of these rates are applied.</span> Since 15 September 2026
+          vendors keep 100% of the price they set, and the platform earns its service fee and 10% of the delivery fee
+          instead — see Platform profit. Seller settlement ignores this table whatever it says; it is kept only as a
+          record of the old rates.
         </p>
       </Card>
 

@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import {
   Activity,
   BadgePercent,
-  Percent,
+  PiggyBank,
   Bike,
   Building2,
   CalendarDays,
@@ -66,18 +66,21 @@ const GROUPS: { label: string; items: { to: string; label: string; icon: typeof 
   {
     label: 'Money',
     items: [
+      { to: '/profit', label: 'Platform profit', icon: PiggyBank },
       { to: '/wallets', label: 'Wallets & payouts', icon: Wallet },
       { to: '/bills', label: 'Bill payments', icon: Receipt },
     ],
   },
   {
     label: 'Configuration',
+    // No "Commission rates": vendors keep their full product price since
+    // 2026-09-15, so those rates no longer apply. The page stays at
+    // /commissions for anyone with it bookmarked, and says so.
     items: [
       { to: '/promos', label: 'Promo codes', icon: BadgePercent },
       { to: '/landmarks', label: 'Delivery zones', icon: MapPin },
       { to: '/carousel', label: 'Carousel', icon: Images },
       { to: '/broadcast', label: 'Broadcast', icon: Megaphone },
-      { to: '/commissions', label: 'Commission rates', icon: Percent },
       { to: '/settings', label: 'Platform settings', icon: Settings },
     ],
   },

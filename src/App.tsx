@@ -33,6 +33,7 @@ const Carousel = lazy(() => import('./pages/Carousel'))
 const Events = lazy(() => import('./pages/Events'))
 const Broadcast = lazy(() => import('./pages/Broadcast'))
 const Commissions = lazy(() => import('./pages/Commissions'))
+const Profit = lazy(() => import('./pages/Profit'))
 const Settings = lazy(() => import('./pages/Settings'))
 
 /* The campus console. A head of operations never loads any of the above. */
@@ -173,6 +174,7 @@ export default function App() {
                 ['/carousel', <Carousel key="ca" />],
                 ['/broadcast', <Broadcast key="br" />],
                 ['/commissions', <Commissions key="cm" />],
+                ['/profit', <Profit key="pf" />],
                 ['/settings', <Settings key="s" />],
               ] as const
             ).map(([path, element]) => (
