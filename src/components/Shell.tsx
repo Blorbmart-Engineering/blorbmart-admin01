@@ -5,6 +5,7 @@ import {
   BadgePercent,
   PiggyBank,
   Bike,
+  Briefcase,
   Building2,
   CalendarDays,
   ChevronDown,
@@ -61,6 +62,7 @@ const GROUPS: { label: string; items: { to: string; label: string; icon: typeof 
       { to: '/users', label: 'Users', icon: Users },
       { to: '/riders', label: 'Riders', icon: Bike },
       { to: '/deliveries', label: 'Deliveries', icon: Truck },
+      { to: '/careers', label: 'Careers', icon: Briefcase },
     ],
   },
   {

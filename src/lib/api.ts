@@ -342,6 +342,60 @@ export interface EventDraft {
 /** Rows from the pre-existing admin router, which returns loosely-typed docs. */
 export type Row = Record<string, unknown>
 
+/* ─────────────────────────────── Careers ─────────────────────────────── */
+
+export type WorkType = 'onsite' | 'remote' | 'hybrid'
+export type EmploymentType = 'full_time' | 'part_time' | 'internship' | 'contract'
+export type JobStatus = 'draft' | 'published' | 'closed'
+export type ApplicationStatus = 'new' | 'reviewing' | 'shortlisted' | 'rejected' | 'hired'
+
+export interface CareerJob {
+  id: string
+  title: string
+  department: string
+  workType: WorkType
+  location: string
+  employmentType: EmploymentType
+  description: string
+  requirements: string[]
+  /** When the role last went live. Null while it is a draft. */
+  postedAt: string | null
+  deadline: string | null
+  status: JobStatus
+  /** Published and not past its deadline — the only state that takes applications. */
+  open: boolean
+  applicationCount: number
+  createdAt: string | null
+  updatedAt: string | null
+  closedAt: string | null
+  createdBy: string | null
+  updatedBy: string | null
+}
+
+export type CareerJobDraft = Omit<
+  CareerJob,
+  'id' | 'postedAt' | 'open' | 'applicationCount' | 'createdAt' | 'updatedAt' | 'closedAt' | 'createdBy' | 'updatedBy'
+>
+
+export interface CareerApplication {
+  id: string
+  /** 'general' is the "no role fits" CV drop. */
+  kind: 'role' | 'general'
+  jobId: string | null
+  jobTitle: string | null
+  jobDepartment: string | null
+  name: string
+  email: string
+  phone: string | null
+  note: string | null
+  areaOfInterest: string | null
+  status: ApplicationStatus
+  cv: { fileName: string; contentType: string; size: number } | null
+  createdAt: string | null
+  updatedAt: string | null
+  reviewedBy: string | null
+}
+
 /* ──────────────────────────────── Client ─────────────────────────────── */
 
 type Q = Record<string, string | number | undefined | null>
@@ -565,6 +619,43 @@ export const adminApi = {
     unwrap<{ tickets: EventTicket[]; checkedIn: number; total: number }>(
       api.get(`/api/admin/events/${id}/attendees`),
     ),
+
+  /* Careers (routes/adminCareers.js) */
+  careerJobs: () => unwrap<{ jobs: CareerJob[] }>(api.get('/api/admin/careers/jobs')),
+  createCareerJob: (body: CareerJobDraft) => unwrap<CareerJob>(api.post('/api/admin/careers/jobs', body)),
+  updateCareerJob: (id: string, body: Partial<CareerJobDraft>) =>
+    unwrap<CareerJob>(api.patch(`/api/admin/careers/jobs/${id}`, body)),
+  /** Only ever allowed on a draft nobody has applied to. */
+  deleteCareerJob: (id: string) =>
+    unwrap<{ id: string; deleted: boolean }>(api.delete(`/api/admin/careers/jobs/${id}`)),
+
+  careerApplications: (params: Q = {}) =>
+    unwrap<{ applications: CareerApplication[] }>(
+      api.get('/api/admin/careers/applications', { params: clean(params) }),
+    ),
+  setApplicationStatus: (id: string, status: ApplicationStatus) =>
+    unwrap<CareerApplication>(api.patch(`/api/admin/careers/applications/${id}`, { status })),
+
+  /**
+   * The CV, fetched with the admin's token and handed to the browser.
+   *
+   * It is somebody's phone number, address and work history, so it never
+   * sits behind a public URL — the file comes through the API or not at all.
+   */
+  async downloadCv(application: CareerApplication) {
+    const res = await api.get(`/api/admin/careers/applications/${application.id}/cv`, {
+      responseType: 'blob',
+      timeout: 120_000,
+    })
+    const url = URL.createObjectURL(res.data as Blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = application.cv?.fileName ?? `${application.name}-cv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  },
 
   /**
    * CSV exports stream from the server already formatted, so they are fetched

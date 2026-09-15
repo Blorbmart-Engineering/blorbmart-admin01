@@ -32,6 +32,7 @@ const Landmarks = lazy(() => import('./pages/Landmarks'))
 const Carousel = lazy(() => import('./pages/Carousel'))
 const Events = lazy(() => import('./pages/Events'))
 const Broadcast = lazy(() => import('./pages/Broadcast'))
+const Careers = lazy(() => import('./pages/Careers'))
 const Commissions = lazy(() => import('./pages/Commissions'))
 const Profit = lazy(() => import('./pages/Profit'))
 const Settings = lazy(() => import('./pages/Settings'))
@@ -167,6 +168,7 @@ export default function App() {
                 ['/users', <Users key="u" />],
                 ['/riders', <Riders key="r" />],
                 ['/deliveries', <Deliveries key="dl" />],
+                ['/careers', <Careers key="cj" />],
                 ['/wallets', <Wallets key="w" />],
                 ['/bills', <Bills key="b" />],
                 ['/promos', <Promos key="pr" />],
