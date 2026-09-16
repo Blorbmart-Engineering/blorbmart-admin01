@@ -68,7 +68,28 @@ body {
   animation: shimmer 1.6s infinite;
 }
 
+/* The splash mark writes itself, as it does on www: the pen traces the
+   outline, then the fill comes in behind it, then the finished mark pulses for
+   as long as the wait lasts. --mark-t puts every splash on the clock of the
+   first one (see BrandMarkDraw). */
+@keyframes mark-trace { to { stroke-dashoffset: 0; } }
+@keyframes mark-fill { to { fill-opacity: 1; } }
+@keyframes mark-pulse { 50% { opacity: 0.5; } }
+
+.mark-draw {
+  animation: mark-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) calc(1400ms + var(--mark-t, 0ms)) infinite;
+}
+.mark-draw path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  fill-opacity: 0;
+  animation:
+    mark-trace 950ms cubic-bezier(0.42, 0, 0.58, 1) calc(100ms + var(--mark-t, 0ms)) forwards,
+    mark-fill 450ms ease-out calc(650ms + var(--mark-t, 0ms)) forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .skeleton::after { animation: none; }
+  .mark-draw, .mark-draw path { animation: none; stroke-dashoffset: 0; fill-opacity: 1; }
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }

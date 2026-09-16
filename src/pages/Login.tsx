@@ -4,6 +4,7 @@ import { ShieldAlert, ShieldCheck } from 'lucide-react'
 import { auth } from '../lib/firebase'
 import { useSession } from '../contexts/SessionContext'
 import { Button, Input } from '../components/ui'
+import { BrandTile } from '../components/Brand'
 
 /**
  * Sign-in, and the "you are not an admin" wall.
@@ -75,9 +76,7 @@ export default function Login() {
     <div className="grid min-h-screen place-items-center bg-void px-4">
       <div className="w-full max-w-sm">
         <div className="mb-7 text-center">
-          <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl bg-brand text-[17px] font-bold text-white">
-            B
-          </div>
+          <BrandTile className="mx-auto mb-4 h-12 w-12 rounded-xl" markClassName="h-7 w-7" />
           <h1 className="text-[21px] font-bold tracking-tight text-ink">Blorbmart Control</h1>
           <p className="mt-1.5 text-[13px] text-ink-faint">Operations console for the whole ecosystem.</p>
         </div>

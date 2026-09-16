@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import { useSession } from '../contexts/SessionContext'
 import { cn } from './ui'
+import { BrandTile } from './Brand'
 
 /**
  * Navigation grouped by what an operator is doing, not by which service owns
@@ -172,9 +173,7 @@ export default function Shell({ children }: { children: ReactNode }) {
           and payouts twenty times an hour should not pay a click each time. */}
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-line bg-panel lg:flex">
         <div className="flex items-center gap-2.5 border-b border-line-soft px-4 py-4">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand text-[13px] font-bold text-white">
-            B
-          </span>
+          <BrandTile className="h-8 w-8" markClassName="h-[19px] w-[19px]" />
           <div>
             <p className="text-[13.5px] font-bold leading-tight text-ink">Blorbmart</p>
             <p className="text-[11px] leading-tight text-ink-faint">Control</p>
@@ -190,7 +189,10 @@ export default function Shell({ children }: { children: ReactNode }) {
           <div className="absolute inset-0 bg-black/70" onClick={() => setMobileOpen(false)} aria-hidden />
           <aside className="relative flex h-full w-64 flex-col border-r border-line bg-panel">
             <div className="flex items-center justify-between border-b border-line-soft px-4 py-4">
-              <p className="text-[13.5px] font-bold text-ink">Blorbmart Control</p>
+              <p className="flex items-center gap-2 text-[13.5px] font-bold text-ink">
+                <BrandTile className="h-7 w-7" markClassName="h-4 w-4" />
+                Blorbmart Control
+              </p>
               <button onClick={() => setMobileOpen(false)} aria-label="Close menu" className="text-ink-faint">
                 <X className="w-5 h-5" aria-hidden />
               </button>
@@ -206,7 +208,10 @@ export default function Shell({ children }: { children: ReactNode }) {
           <button onClick={() => setMobileOpen(true)} aria-label="Open menu" className="text-ink-soft">
             <Menu className="w-5 h-5" aria-hidden />
           </button>
-          <p className="text-[14px] font-bold text-ink">Blorbmart Control</p>
+          <p className="flex items-center gap-2 text-[14px] font-bold text-ink">
+            <BrandTile className="h-7 w-7" markClassName="h-4 w-4" />
+            Blorbmart Control
+          </p>
         </header>
 
         {/* Keyed on pathname so a page's scroll position never carries over

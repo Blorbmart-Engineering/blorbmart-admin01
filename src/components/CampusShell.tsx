@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { useSession } from '../contexts/SessionContext'
 import { Badge, cn } from './ui'
+import { BrandTile } from './Brand'
 
 /**
  * The campus console.
@@ -99,9 +100,7 @@ function Brand() {
   const { campus } = useSession()
   return (
     <div className="flex items-center gap-2.5">
-      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand text-[13px] font-bold text-white">
-        B
-      </span>
+      <BrandTile className="h-8 w-8" markClassName="h-[19px] w-[19px]" />
       <div className="min-w-0">
         <p className="truncate text-[13.5px] font-bold leading-tight text-ink">
           {campus?.campus?.shortName ?? 'Blorbmart'}
@@ -150,7 +149,10 @@ export default function CampusShell({ children }: { children: ReactNode }) {
           <button onClick={() => setMobileOpen(true)} aria-label="Open menu" className="text-ink-soft">
             <Menu className="w-5 h-5" aria-hidden />
           </button>
-          <p className="text-[14px] font-bold text-ink">{campus?.campus?.shortName ?? 'Campus'}</p>
+          <p className="flex items-center gap-2 text-[14px] font-bold text-ink">
+            <BrandTile className="h-7 w-7" markClassName="h-4 w-4" />
+            {campus?.campus?.shortName ?? 'Campus'}
+          </p>
         </header>
 
         {/* A paused campus is stated on every screen, not just the dashboard.

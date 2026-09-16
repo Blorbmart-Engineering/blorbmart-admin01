@@ -6,6 +6,7 @@ import { SessionProvider, useSession } from './contexts/SessionContext'
 import Shell from './components/Shell'
 import CampusShell from './components/CampusShell'
 import { Skeleton } from './components/ui'
+import { BrandMarkDraw, useMarkStillDrawing } from './components/Brand'
 import Login from './pages/Login'
 
 /*
@@ -71,12 +72,15 @@ function PageSkeleton() {
   )
 }
 
+/**
+ * The mark writing itself on the console's ground. The guards hold it only
+ * until the mark is written — about a second — so a fast session check never
+ * cuts it off mid-stroke.
+ */
 function Splash() {
   return (
     <div className="grid min-h-screen place-items-center bg-void">
-      <div className="grid h-11 w-11 animate-pulse place-items-center rounded-xl bg-brand text-[15px] font-bold text-white">
-        B
-      </div>
+      <BrandMarkDraw className="h-14 w-[54px] text-brand" />
     </div>
   )
 }
@@ -92,8 +96,9 @@ function Splash() {
  */
 function Guarded({ children }: { children: ReactNode }) {
   const { user, identity, role, loading } = useSession()
+  const drawing = useMarkStillDrawing()
 
-  if (loading) return <Splash />
+  if (loading || drawing) return <Splash />
   if (role === 'head_of_ops') return <Navigate to="/campus" replace />
   if (!user || role !== 'admin' || !identity?.admin) return <Login />
 
@@ -115,8 +120,9 @@ function Guarded({ children }: { children: ReactNode }) {
  */
 function CampusGuarded({ children }: { children: ReactNode }) {
   const { user, campus, role, loading } = useSession()
+  const drawing = useMarkStillDrawing()
 
-  if (loading) return <Splash />
+  if (loading || drawing) return <Splash />
   if (role === 'admin') return <Navigate to="/" replace />
   if (!user || role !== 'head_of_ops') return <Login />
 
@@ -144,7 +150,8 @@ function CampusGuarded({ children }: { children: ReactNode }) {
  */
 function RoleHome() {
   const { role, loading } = useSession()
-  if (loading) return <Splash />
+  const drawing = useMarkStillDrawing()
+  if (loading || drawing) return <Splash />
   if (role === 'head_of_ops') return <Navigate to="/campus" replace />
   return <Navigate to="/" replace />
 }
