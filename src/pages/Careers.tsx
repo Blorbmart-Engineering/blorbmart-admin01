@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { Briefcase, Download, FileText, Link2, Plus, Trash2 } from 'lucide-react'
@@ -60,12 +60,6 @@ const EMPLOYMENT_TYPES: { value: EmploymentType; label: string }[] = [
 
 const JOB_STATUSES: JobStatus[] = ['draft', 'published', 'closed']
 const APPLICATION_STATUSES: ApplicationStatus[] = ['new', 'reviewing', 'shortlisted', 'rejected', 'hired']
-
-const JOB_TONE: Record<JobStatus, 'good' | 'warn' | 'neutral'> = {
-  published: 'good',
-  draft: 'warn',
-  closed: 'neutral',
-}
 
 const APP_TONE: Record<ApplicationStatus, 'info' | 'warn' | 'good' | 'bad'> = {
   new: 'info',
