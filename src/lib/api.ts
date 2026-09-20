@@ -159,7 +159,12 @@ export interface BillPayment {
   serviceId: string | null
   serviceName: string | null
   recipient: string | null
+  /** The value bought, before the transaction fee. */
   amount: number
+  /** The transaction fee added on top, per the dashboard settings. */
+  fee: number
+  /** What the customer was actually charged: amount + fee. */
+  total: number
   cashback: number
   status: string | null
   reference: string | null
@@ -433,9 +438,11 @@ export const adminApi = {
     unwrap<Row>(api.patch(`/api/admin/withdrawals/${system}/${id}/status`, { status, note })),
 
   bills: (params: Q = {}) =>
-    unwrap<{ count: number; bills: BillPayment[]; totals: { amount: number; byStatus: Record<string, number> } }>(
-      api.get('/api/admin/bills', { params: clean(params) }),
-    ),
+    unwrap<{
+      count: number
+      bills: BillPayment[]
+      totals: { amount: number; fees: number; byStatus: Record<string, number> }
+    }>(api.get('/api/admin/bills', { params: clean(params) })),
 
   campuses: () =>
     unwrap<{

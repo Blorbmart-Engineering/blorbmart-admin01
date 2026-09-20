@@ -41,6 +41,10 @@ export default function Bills() {
   const rows = bills.data?.bills ?? []
   const totals = bills.data?.totals
   const failed = totals?.byStatus?.failed ?? 0
+  // The backend writes "delivered" for a completed purchase. This counted
+  // success/successful/completed, none of which is ever written, so the tile
+  // read zero on a screen full of successful purchases.
+  const delivered = totals?.byStatus?.delivered ?? 0
   const failureRate = rows.length ? Math.round((failed / rows.length) * 100) : 0
 
   const columns: Column<BillPayment>[] = [
@@ -62,7 +66,19 @@ export default function Bills() {
       ),
     },
     { key: 'recipient', header: 'Recipient', render: (b) => <span className="tabular">{text(b.recipient)}</span> },
-    { key: 'amount', header: 'Amount', align: 'right', render: (b) => <span className="font-semibold text-ink">{money(b.amount)}</span> },
+    { key: 'amount', header: 'Value', align: 'right', render: (b) => <span className="font-semibold text-ink">{money(b.amount)}</span> },
+    {
+      key: 'fee',
+      header: 'Fee',
+      align: 'right',
+      render: (b) => (b.fee ? money(b.fee) : '—'),
+    },
+    {
+      key: 'total',
+      header: 'Charged',
+      align: 'right',
+      render: (b) => <span className="font-semibold text-ink">{money(b.total)}</span>,
+    },
     {
       key: 'cashback',
       header: 'Cashback',
@@ -96,6 +112,13 @@ export default function Bills() {
         />
         <Stat label="Value" value={money(totals?.amount)} hint="Across the rows in view" loading={bills.isLoading} />
         <Stat
+          label="Fees earned"
+          value={money(totals?.fees)}
+          hint="Delivered purchases only"
+          tone="good"
+          loading={bills.isLoading}
+        />
+        <Stat
           label="Failure rate"
           value={`${failureRate}%`}
           hint={`${count(failed)} failed of ${count(rows.length)}`}
@@ -103,11 +126,9 @@ export default function Bills() {
           loading={bills.isLoading}
         />
         <Stat
-          label="Successful"
-          value={count(
-            (totals?.byStatus?.success ?? 0) + (totals?.byStatus?.successful ?? 0) + (totals?.byStatus?.completed ?? 0),
-          )}
-          hint="Delivered by the provider"
+          label="Delivered"
+          value={count(delivered)}
+          hint="Value released by the provider"
           tone="good"
           loading={bills.isLoading}
         />
@@ -118,9 +139,13 @@ export default function Bills() {
         title={
           <Toolbar>
             <Select label="Status" value={status} onChange={(e) => setStatus(e.target.value)} className="w-40">
+              {/* These are the values billsService actually writes; filtering
+                  on anything else returns an empty table. */}
               <option value="all">All statuses</option>
-              <option value="success">Success</option>
-              <option value="pending">Pending</option>
+              <option value="delivered">Delivered</option>
+              <option value="pending">Awaiting payment</option>
+              <option value="processing">Processing</option>
+              <option value="pending_confirmation">Confirming</option>
               <option value="failed">Failed</option>
               <option value="refunded">Refunded</option>
             </Select>
