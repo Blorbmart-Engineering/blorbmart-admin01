@@ -92,7 +92,7 @@ export default function Broadcast() {
       key: 'message',
       header: 'Message',
       render: (b) => (
-        <div className="min-w-0">
+        <div className="min-w-0 max-w-[280px]">
           <p className="truncate font-semibold text-ink">{text(b.title)}</p>
           <p className="truncate text-[11.5px] text-ink-faint">{text(b.body)}</p>
         </div>
@@ -132,7 +132,10 @@ export default function Broadcast() {
     <>
       <PageHeader title="Broadcast" subtitle="Send a push or email to everyone at once." />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,420px)_1fr]">
+      {/* The history column is the one allowed to shrink. The other way round,
+          one long message in the table squeezed Compose to nothing the moment
+          the history loaded. */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]">
         <Card title="Compose">
           <div className="space-y-3.5">
             <Toolbar className="gap-3">
