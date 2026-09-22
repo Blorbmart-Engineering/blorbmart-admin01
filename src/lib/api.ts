@@ -610,7 +610,14 @@ export const adminApi = {
   deleteCategoryCommission: (id: string) =>
     unwrap<Row>(api.delete(`/api/category-commission/${id}`)),
 
-  broadcast: (body: Row) => unwrap<Row>(api.post('/api/admin/broadcast', body)),
+  /** Field names are the route's own: `type`, not "channel"; `body`, not "message". */
+  broadcast: (body: {
+    type: 'push' | 'email' | 'both'
+    title: string
+    subject: string
+    body: string
+    audience: 'all' | 'buyers' | 'vendors' | 'riders'
+  }) => unwrap<BroadcastResult['result']>(api.post('/api/admin/broadcast', body)),
   broadcastHistory: () => unwrap<Row>(api.get('/api/admin/broadcast/history')),
 
   /* Events. Same service the organizer app writes through, with the

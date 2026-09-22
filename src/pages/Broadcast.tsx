@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { AlertTriangle, Megaphone, Send } from 'lucide-react'
-import { adminApi, errorMessage, type Row } from '../lib/api'
+import { adminApi, errorMessage, type BroadcastResult, type Row } from '../lib/api'
 import { ago, count, text, titleCase } from '../lib/format'
 import {
   Badge,
@@ -23,6 +23,28 @@ const asRows = (data: unknown): Row[] => {
   return wrapped?.broadcasts ?? wrapped?.history ?? []
 }
 
+type Channel = 'push' | 'email' | 'both'
+type Audience = 'all' | 'buyers' | 'vendors' | 'riders'
+
+// The log holds campus messages too, whose `type` is a "+"-joined list such
+// as "push+inapp".
+const CHANNEL_NAMES: Record<string, string> = { push: 'Push', email: 'Email', inapp: 'In-app' }
+const channelLabel = (type: unknown) => {
+  const raw = text(type, 'push')
+  const parts = raw === 'both' ? ['push', 'email'] : raw.split('+')
+  return parts.map((p) => CHANNEL_NAMES[p] ?? titleCase(p)).join(' + ')
+}
+
+/** Devices pushed to plus inboxes emailed, as the server logged them. */
+const reach = (b: Row) => {
+  const result = (b.result ?? {}) as BroadcastResult['result']
+  const channels = [result.push, result.email]
+  return {
+    sent: channels.reduce((n, c) => n + (c?.sentCount ?? 0), 0),
+    failed: channels.reduce((n, c) => n + (c?.failedCount ?? 0), 0),
+  }
+}
+
 /**
  * Broadcast.
  *
@@ -33,8 +55,8 @@ const asRows = (data: unknown): Row[] => {
  */
 export default function Broadcast() {
   const queryClient = useQueryClient()
-  const [channel, setChannel] = useState('push')
-  const [audience, setAudience] = useState('all')
+  const [channel, setChannel] = useState<Channel>('push')
+  const [audience, setAudience] = useState<Audience>('all')
   const [title, setTitle] = useState('')
   const [message, setMessage] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -46,9 +68,17 @@ export default function Broadcast() {
   })
 
   const send = useMutation({
-    mutationFn: () => adminApi.broadcast({ channel, audience, title: title.trim(), message: message.trim() }),
-    onSuccess: () => {
-      toast.success('Broadcast sent')
+    mutationFn: () =>
+      adminApi.broadcast({
+        type: channel,
+        audience,
+        title: title.trim(),
+        subject: title.trim(),
+        body: message.trim(),
+      }),
+    onSuccess: (result) => {
+      const sent = (result?.push?.sentCount ?? 0) + (result?.email?.sentCount ?? 0)
+      toast.success(`Broadcast sent to ${count(sent)} ${sent === 1 ? 'recipient' : 'recipients'}`)
       queryClient.invalidateQueries({ queryKey: ['broadcast-history'] })
       setTitle('')
       setMessage('')
@@ -64,22 +94,39 @@ export default function Broadcast() {
       render: (b) => (
         <div className="min-w-0">
           <p className="truncate font-semibold text-ink">{text(b.title)}</p>
-          <p className="truncate text-[11.5px] text-ink-faint">{text(b.message ?? b.body)}</p>
+          <p className="truncate text-[11.5px] text-ink-faint">{text(b.body)}</p>
         </div>
       ),
     },
-    { key: 'channel', header: 'Channel', render: (b) => <Badge tone="info">{titleCase(text(b.channel, 'push'))}</Badge> },
-    { key: 'audience', header: 'Audience', render: (b) => titleCase(text(b.audience, 'all')) },
+    { key: 'channel', header: 'Channel', render: (b) => <Badge tone="info">{channelLabel(b.type)}</Badge> },
+    {
+      key: 'audience',
+      header: 'Audience',
+      render: (b) => `${titleCase(text(b.audience, 'all'))}${b.campusId ? ' · one campus' : ''}`,
+    },
     {
       key: 'reach',
       header: 'Delivered',
       align: 'right',
-      render: (b) => `${count(b.successCount ?? b.sent ?? 0)}${b.failureCount ? ` (${count(b.failureCount)} failed)` : ''}`,
+      render: (b) => {
+        const { sent, failed } = reach(b)
+        return `${count(sent)}${failed ? ` (${count(failed)} failed)` : ''}`
+      },
     },
     { key: 'when', header: 'Sent', align: 'right', render: (b) => ago(b.createdAt ?? b.sentAt) },
   ]
 
-  const ready = title.trim().length > 2 && message.trim().length > 4 && confirm.trim().toUpperCase() === 'SEND'
+  // Said out loud under the button: a greyed-out button with no reason reads
+  // as a missing one.
+  const blocker =
+    title.trim().length < 3
+      ? 'Add a title of at least 3 characters.'
+      : message.trim().length < 5
+        ? 'Write a message of at least 5 characters.'
+        : confirm.trim().toUpperCase() !== 'SEND'
+          ? 'Type SEND in the box above to unlock sending.'
+          : null
+  const ready = blocker === null
 
   return (
     <>
@@ -89,14 +136,20 @@ export default function Broadcast() {
         <Card title="Compose">
           <div className="space-y-3.5">
             <Toolbar className="gap-3">
-              <Select label="Channel" value={channel} onChange={(e) => setChannel(e.target.value)} className="w-36">
+              <Select
+                label="Channel"
+                value={channel}
+                onChange={(e) => setChannel(e.target.value as Channel)}
+                className="w-36"
+              >
                 <option value="push">Push</option>
                 <option value="email">Email</option>
+                <option value="both">Push + email</option>
               </Select>
               <Select
                 label="Audience"
                 value={audience}
-                onChange={(e) => setAudience(e.target.value)}
+                onChange={(e) => setAudience(e.target.value as Audience)}
                 className="w-40"
               >
                 <option value="all">Everyone</option>
@@ -143,23 +196,29 @@ export default function Broadcast() {
               </p>
             </div>
 
+            {/* No "SEND" placeholder: grey SEND in an empty box looks typed,
+                and the button then seems dead for no reason. */}
             <Input
-              label="Confirm"
-              placeholder="SEND"
+              label="Type SEND to confirm"
+              autoComplete="off"
+              spellCheck={false}
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
             />
 
-            <Button
-              variant="primary"
-              icon={Send}
-              className="w-full"
-              loading={send.isPending}
-              disabled={!ready}
-              onClick={() => send.mutate()}
-            >
-              Send broadcast
-            </Button>
+            <div className="space-y-2">
+              <Button
+                variant="primary"
+                icon={Send}
+                className="w-full"
+                loading={send.isPending}
+                disabled={!ready}
+                onClick={() => send.mutate()}
+              >
+                Send broadcast
+              </Button>
+              {blocker && <p className="text-center text-[11.5px] text-ink-faint">{blocker}</p>}
+            </div>
           </div>
         </Card>
 
