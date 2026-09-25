@@ -36,6 +36,7 @@ export default function Users() {
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<Row | null>(null)
   const [reason, setReason] = useState('')
+  const [campusId, setCampusId] = useState('')
 
   const users = useQuery({
     queryKey: ['users', role, q, page],
@@ -54,6 +55,36 @@ export default function Users() {
     },
     onError: (error) => toast.error(errorMessage(error, 'Could not update the account.')),
   })
+
+  // Only loaded once a user is opened: most visits to this screen never
+  // change anyone's school.
+  const campuses = useQuery({
+    queryKey: ['campuses', 'manage'],
+    queryFn: adminApi.manageCampuses,
+    enabled: Boolean(selected),
+    staleTime: 120_000,
+  })
+
+  const moveCampus = useMutation({
+    mutationFn: ({ id, universityId }: { id: string; universityId: string }) =>
+      adminApi.setUserCampus(id, universityId, reason || undefined),
+    onSuccess: (d) => {
+      const extra = [
+        d.moved.store && `their store and ${d.moved.products} product${d.moved.products === 1 ? '' : 's'}`,
+        d.moved.rider && 'their rider profile',
+      ].filter(Boolean)
+      toast.success(`Moved to ${d.universityName}${extra.length ? `, with ${extra.join(' and ')}` : ''}`)
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      setSelected((s) => (s ? { ...s, universityId: d.universityId, universityName: d.universityName } : s))
+      setReason('')
+    },
+    onError: (error) => toast.error(errorMessage(error, 'Could not change the school.')),
+  })
+
+  const openUser = (u: Row) => {
+    setSelected(u)
+    setCampusId(text(u.universityId, ''))
+  }
 
   const idOf = (u: Row) => String(pickId(u))
 
@@ -142,7 +173,7 @@ export default function Users() {
           loading={users.isLoading}
           error={users.isError ? errorMessage(users.error) : null}
           onRetry={() => users.refetch()}
-          onRowClick={(u) => setSelected(u)}
+          onRowClick={openUser}
           empty={<Empty icon={UsersIcon} title="No users" message="Nothing matches these filters." />}
         />
 
@@ -209,6 +240,37 @@ export default function Users() {
               <Detail label="Last login">{ago(selected.lastLoginAt)}</Detail>
               <Detail label="User id">{text(pickId(selected))}</Detail>
             </div>
+
+            <div className="flex items-end gap-2">
+              <Select
+                label="School"
+                value={campusId}
+                onChange={(e) => setCampusId(e.target.value)}
+                disabled={campuses.isLoading}
+                className="min-w-0 flex-1"
+              >
+                <option value="" disabled>
+                  {campuses.isLoading ? 'Loading schools…' : 'Pick a school'}
+                </option>
+                {(campuses.data?.campuses ?? []).map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                    {c.active ? '' : ' (closed)'}
+                  </option>
+                ))}
+                <option value="bills-only">No campus (bills only)</option>
+              </Select>
+              <Button
+                loading={moveCampus.isPending}
+                disabled={!campusId || campusId === text(selected.universityId, '')}
+                onClick={() => moveCampus.mutate({ id: idOf(selected), universityId: campusId })}
+              >
+                Change school
+              </Button>
+            </div>
+            {campuses.isError && (
+              <p className="text-[12px] text-bad">{errorMessage(campuses.error, 'Could not load schools.')}</p>
+            )}
 
             <Input
               label="Reason (recorded in the activity log)"

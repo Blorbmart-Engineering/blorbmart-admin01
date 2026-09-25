@@ -552,6 +552,15 @@ export const adminApi = {
   user: (id: string) => unwrap<Row>(api.get(`/api/admin/users/${id}`)),
   userAction: (id: string, action: string, reason?: string) =>
     unwrap<Row>(api.patch(`/api/admin/users/${id}/action`, { action, reason })),
+  /** Also moves the user's rider profile, store and menu, when they have them. */
+  setUserCampus: (id: string, universityId: string, reason?: string) =>
+    unwrap<{
+      userId: string
+      from: string | null
+      universityId: string
+      universityName: string
+      moved: { user: boolean; rider: boolean; store: boolean; products: number }
+    }>(api.patch(`/api/admin/users/${id}/campus`, { universityId, reason })),
 
   vendors: (params: Q = {}) =>
     unwrap<{ count: number; vendors: Row[]; pagination: Paged<Row>['pagination'] }>(
