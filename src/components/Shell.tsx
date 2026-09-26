@@ -6,6 +6,7 @@ import {
   PiggyBank,
   Bike,
   Briefcase,
+  Gift,
   Building2,
   CalendarDays,
   ChevronDown,
@@ -72,6 +73,7 @@ const GROUPS: { label: string; items: { to: string; label: string; icon: typeof 
       { to: '/profit', label: 'Platform profit', icon: PiggyBank },
       { to: '/wallets', label: 'Wallets & payouts', icon: Wallet },
       { to: '/bills', label: 'Bill payments', icon: Receipt },
+      { to: '/gift-cards', label: 'Gift cards', icon: Gift },
     ],
   },
   {

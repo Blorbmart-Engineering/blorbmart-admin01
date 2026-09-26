@@ -34,6 +34,7 @@ const Carousel = lazy(() => import('./pages/Carousel'))
 const Events = lazy(() => import('./pages/Events'))
 const Broadcast = lazy(() => import('./pages/Broadcast'))
 const Careers = lazy(() => import('./pages/Careers'))
+const GiftCards = lazy(() => import('./pages/GiftCards'))
 const Commissions = lazy(() => import('./pages/Commissions'))
 const Profit = lazy(() => import('./pages/Profit'))
 const Settings = lazy(() => import('./pages/Settings'))
@@ -178,6 +179,7 @@ export default function App() {
                 ['/careers', <Careers key="cj" />],
                 ['/wallets', <Wallets key="w" />],
                 ['/bills', <Bills key="b" />],
+                ['/gift-cards', <GiftCards key="gc" />],
                 ['/promos', <Promos key="pr" />],
                 ['/landmarks', <Landmarks key="l" />],
                 ['/carousel', <Carousel key="ca" />],

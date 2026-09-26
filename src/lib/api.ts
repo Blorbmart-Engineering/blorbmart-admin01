@@ -412,6 +412,38 @@ const clean = (params: Q) =>
     Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '' && v !== 'all'),
   )
 
+export interface GiftCardRow {
+  id: string
+  amount: number
+  status: 'pending_payment' | 'active' | 'redeemed' | 'expired' | 'revoked' | 'failed'
+  design: { theme: string; headline: string }
+  to: string
+  from: string
+  purchaserId: string
+  purchaserEmail: string | null
+  paymentMethod: string
+  reference: string
+  codeLast4: string | null
+  recipientEmail: string | null
+  redeemedBy: string | null
+  redeemedByEmail: string | null
+  createdAt: string | null
+  activatedAt: string | null
+  redeemedAt: string | null
+  expiresAt: string | null
+  revokedAt: string | null
+  revokeReason: string | null
+}
+
+export interface GiftCardSummary {
+  sold: number
+  soldValue: number
+  redeemed: number
+  redeemedValue: number
+  outstanding: number
+  outstandingValue: number
+}
+
 export const adminApi = {
   me: () => unwrap<AdminIdentity>(api.get('/api/admin/me')),
 
@@ -657,6 +689,14 @@ export const adminApi = {
     unwrap<{ tickets: EventTicket[]; checkedIn: number; total: number }>(
       api.get(`/api/admin/events/${id}/attendees`),
     ),
+
+  /* Gift cards (routes/adminGiftCards.js). Never carries a full code. */
+  giftCards: (params: Q = {}) =>
+    unwrap<{ cards: GiftCardRow[]; summary: GiftCardSummary }>(
+      api.get('/api/admin/gift-cards', { params: clean(params) }),
+    ),
+  revokeGiftCard: (id: string, body: { reason: string; refund: boolean }) =>
+    unwrap<GiftCardRow>(api.post(`/api/admin/gift-cards/${id}/revoke`, body)),
 
   /* Careers (routes/adminCareers.js) */
   careerJobs: () => unwrap<{ jobs: CareerJob[] }>(api.get('/api/admin/careers/jobs')),
