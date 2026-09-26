@@ -888,6 +888,65 @@ export const campusApi = {
     ),
 }
 
+/* ─────────────────────────── In-app pop-ups ──────────────────────────── */
+
+export type PopupFrequency = 'once' | 'daily' | 'every_open'
+export type PopupState = 'live' | 'scheduled' | 'ended' | 'paused'
+
+export interface Announcement {
+  id: string
+  title: string
+  body: string
+  imageUrl: string
+  ctaLabel: string
+  ctaLink: string
+  /** Null means every campus (and guests). */
+  campusId: string | null
+  frequency: PopupFrequency
+  priority: number
+  active: boolean
+  state: PopupState
+  startsAt: number | null
+  endsAt: number | null
+  stats: { views: number; clicks: number }
+  push: { sentAt: number; push: { sentCount?: number } | null; inApp: { sentCount?: number } | null } | null
+  createdAt: number | null
+  updatedAt: number | null
+}
+
+export interface AnnouncementInput {
+  title?: string
+  body?: string
+  ctaLabel?: string
+  ctaLink?: string
+  campusId?: string | null
+  frequency?: PopupFrequency
+  priority?: number
+  active?: boolean
+  startsAt?: number | null
+  endsAt?: number | null
+  /** A `data:image/...` URL; resized (never cropped) by the server. */
+  imageBase64?: string
+  removeImage?: boolean
+  /** On an edit: count it as new for people who already saw the old one. */
+  showAgain?: boolean
+  /** On create: also tell buyers outside the app. Sent only if it is live now. */
+  notify?: { push?: boolean; inbox?: boolean }
+}
+
+export type NotifyResult = { push?: { sentCount?: number; error?: string }; inApp?: { sentCount?: number; error?: string } }
+
+export const announcementsApi = {
+  list: () => unwrap<{ announcements: Announcement[] }>(api.get('/api/admin/announcements')),
+  create: (body: AnnouncementInput) =>
+    unwrap<{ announcement: Announcement; notified: NotifyResult | null }>(api.post('/api/admin/announcements', body)),
+  update: (id: string, body: AnnouncementInput) =>
+    unwrap<Announcement>(api.patch(`/api/admin/announcements/${id}`, body)),
+  notify: (id: string, body: { push?: boolean; inbox?: boolean }) =>
+    unwrap<NotifyResult>(api.post(`/api/admin/announcements/${id}/notify`, body)),
+  remove: (id: string) => unwrap<{ id: string }>(api.delete(`/api/admin/announcements/${id}`)),
+}
+
 /* ──────────────────────────── Local market ───────────────────────────── */
 
 export interface MarketStore {
