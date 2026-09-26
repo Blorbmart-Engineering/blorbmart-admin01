@@ -13,6 +13,7 @@ import {
   KeyRound,
   Copy,
   AlertTriangle,
+  Carrot,
 } from 'lucide-react'
 import { adminApi, errorMessage, type CampusRow } from '../lib/api'
 import { count, dateOnly, text } from '../lib/format'
@@ -144,6 +145,14 @@ export default function Campuses() {
       align: 'right',
       render: (c) => (
         <div className="flex justify-end gap-1.5">
+          <Link
+            to={`/campuses/${encodeURIComponent(c.id)}/market`}
+            aria-label={`Local market for ${c.name}`}
+            title="Local market"
+            className="inline-flex h-8 items-center justify-center rounded-lg px-3 text-ink-soft transition-colors hover:bg-raised hover:text-ink"
+          >
+            <Carrot className="h-4 w-4" aria-hidden />
+          </Link>
           <Button
             size="sm"
             variant="ghost"

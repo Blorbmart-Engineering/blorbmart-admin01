@@ -888,4 +888,96 @@ export const campusApi = {
     ),
 }
 
+/* ──────────────────────────── Local market ───────────────────────────── */
+
+export interface MarketStore {
+  id: string
+  name: string | null
+  tagline: string
+  address: string
+  latitude: number | null
+  longitude: number | null
+  openingHour: number
+  closingHour: number
+  prepTimeMins: number
+  isOpen: boolean
+  /** Visible to buyers. Refused by the server until the market has a location. */
+  isActive: boolean
+  bannerUrl: string
+  updatedAt: number | null
+}
+
+export interface MarketProduct {
+  id: string
+  name: string
+  price: number
+  unit: string
+  section: string
+  description: string
+  image: string
+  isAvailable: boolean
+  priceUpdatedAt: number | null
+  updatedAt: number | null
+  createdAt: number | null
+}
+
+export interface Market {
+  campus: { id: string; name: string; shortName: string }
+  /** False until the first save or the first listing creates the store. */
+  created: boolean
+  store: MarketStore
+  products: MarketProduct[]
+  sections: string[]
+}
+
+export interface MarketSettingsInput {
+  name?: string
+  tagline?: string
+  address?: string
+  latitude?: number | null
+  longitude?: number | null
+  openingHour?: number
+  closingHour?: number
+  prepTimeMins?: number
+  isOpen?: boolean
+  isActive?: boolean
+  bannerBase64?: string
+  removeBanner?: boolean
+}
+
+export interface MarketProductInput {
+  name?: string
+  price?: number
+  unit?: string
+  section?: string
+  description?: string
+  isAvailable?: boolean
+  /** A `data:image/...` URL; uploaded and square-cropped by the server. */
+  imageBase64?: string
+  removeImage?: boolean
+}
+
+/**
+ * One campus market, from either console.
+ *
+ * A head of operations gets their own campus from the server and passes no id
+ * — as with the rest of `campusApi`, a campus argument there would be a lie
+ * about where the boundary is. An admin names the campus.
+ */
+export function marketApi(campusId?: string) {
+  const base = campusId
+    ? `/api/admin/campuses/${encodeURIComponent(campusId)}/market`
+    : '/api/head-of-ops/market'
+
+  return {
+    get: () => unwrap<Market>(api.get(base)),
+    save: (body: MarketSettingsInput) => unwrap<Market>(api.patch(base, body)),
+    addProduct: (body: MarketProductInput) => unwrap<MarketProduct>(api.post(`${base}/products`, body)),
+    updateProduct: (id: string, body: MarketProductInput) =>
+      unwrap<MarketProduct>(api.patch(`${base}/products/${id}`, body)),
+    removeProduct: (id: string) =>
+      unwrap<{ id: string; name: string | null }>(api.delete(`${base}/products/${id}`)),
+  }
+}
+
 export default api

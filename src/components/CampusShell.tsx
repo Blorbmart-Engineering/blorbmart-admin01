@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import {
   Bike,
   Building2,
+  Carrot,
   ChevronDown,
   LayoutDashboard,
   LogOut,
@@ -20,7 +21,7 @@ import { BrandTile } from './Brand'
  *
  * Deliberately much smaller than the admin shell: a head of operations runs
  * one campus, so there is no campus switcher, no platform-wide anything, and
- * no grouping — five destinations do not need section headers, and adding them
+ * no grouping — six destinations do not need section headers, and adding them
  * would make the job look bigger than it is.
  *
  * The campus name sits in the rail where the admin console puts "Control",
@@ -30,6 +31,7 @@ import { BrandTile } from './Brand'
 const ITEMS: { to: string; label: string; icon: typeof Bike }[] = [
   { to: '/campus', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/campus/orders', label: 'Orders', icon: ShoppingBag },
+  { to: '/campus/market', label: 'Local market', icon: Carrot },
   { to: '/campus/vendors', label: 'Vendors', icon: Building2 },
   { to: '/campus/riders', label: 'Riders', icon: Bike },
   { to: '/campus/broadcast', label: 'Message campus', icon: Megaphone },

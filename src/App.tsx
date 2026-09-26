@@ -23,6 +23,7 @@ const Orders = lazy(() => import('./pages/Orders'))
 const Products = lazy(() => import('./pages/Products'))
 const Vendors = lazy(() => import('./pages/Vendors'))
 const Campuses = lazy(() => import('./pages/Campuses'))
+const AdminMarket = lazy(() => import('./pages/AdminMarket'))
 const Users = lazy(() => import('./pages/Users'))
 const Riders = lazy(() => import('./pages/Riders'))
 const Deliveries = lazy(() => import('./pages/Deliveries'))
@@ -43,6 +44,7 @@ const Settings = lazy(() => import('./pages/Settings'))
 const SetPassword = lazy(() => import('./pages/campus/SetPassword'))
 const CampusDashboard = lazy(() => import('./pages/campus/CampusDashboard'))
 const CampusOrders = lazy(() => import('./pages/campus/CampusOrders'))
+const CampusMarket = lazy(() => import('./pages/campus/CampusMarket'))
 const CampusVendors = lazy(() => import('./pages/campus/CampusVendors'))
 const CampusRiders = lazy(() => import('./pages/campus/CampusRiders'))
 const CampusBroadcast = lazy(() => import('./pages/campus/CampusBroadcast'))
@@ -172,6 +174,7 @@ export default function App() {
                 ['/products', <Products key="p" />],
                 ['/vendors', <Vendors key="v" />],
                 ['/campuses', <Campuses key="c" />],
+                ['/campuses/:campusId/market', <AdminMarket key="cmk" />],
                 ['/events', <Events key="ev" />],
                 ['/users', <Users key="u" />],
                 ['/riders', <Riders key="r" />],
@@ -196,6 +199,7 @@ export default function App() {
               [
                 ['/campus', <CampusDashboard key="cd" />],
                 ['/campus/orders', <CampusOrders key="co" />],
+                ['/campus/market', <CampusMarket key="cm" />],
                 ['/campus/vendors', <CampusVendors key="cv" />],
                 ['/campus/riders', <CampusRiders key="cr" />],
                 ['/campus/broadcast', <CampusBroadcast key="cb" />],
