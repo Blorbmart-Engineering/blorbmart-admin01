@@ -265,6 +265,8 @@ export interface Delivery {
   dropoffArea: string | null
   earnings: number
   cashToPay: number
+  /** Cash the rider has already handed the restaurant; only on the active list. */
+  cashPaidAmount?: number
   createdAt: number | null
   deliveredAt: number | null
 }
@@ -428,6 +430,19 @@ export const adminApi = {
     unwrap<{ count: number; deliveries: Delivery[] }>(
       api.get('/api/admin/deliveries', { params: clean(params) }),
     ),
+  /** Every delivery still in progress — not capped like the list above. */
+  activeDeliveries: () =>
+    unwrap<{ count: number; deliveries: Delivery[] }>(api.get('/api/admin/deliveries/active')),
+  /** Ends the delivery and cancels its order. Refunds nothing: for test orders. */
+  cancelDelivery: (id: string, reason: string) =>
+    unwrap<{
+      deliveryId: string
+      orderId: string | null
+      orderCancelled: boolean
+      orderError: string | null
+      needsCashReview: boolean
+      refundIssued: false
+    }>(api.post(`/api/admin/deliveries/${id}/cancel`, { reason })),
 
   walletSummary: () => unwrap<WalletSummary>(api.get('/api/admin/wallets/summary')),
   withdrawals: (params: Q = {}) =>
