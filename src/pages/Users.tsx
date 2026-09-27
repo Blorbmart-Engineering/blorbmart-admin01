@@ -37,6 +37,7 @@ export default function Users() {
   const [selected, setSelected] = useState<Row | null>(null)
   const [reason, setReason] = useState('')
   const [campusId, setCampusId] = useState('')
+  const [password, setPassword] = useState('')
 
   const users = useQuery({
     queryKey: ['users', role, q, page],
@@ -81,10 +82,33 @@ export default function Users() {
     onError: (error) => toast.error(errorMessage(error, 'Could not change the school.')),
   })
 
+  const setUserPassword = useMutation({
+    mutationFn: ({ id, password }: { id: string; password: string }) =>
+      adminApi.setUserPassword(id, password, reason || undefined),
+    onSuccess: () => {
+      toast.success('Password changed. They have been signed out everywhere.')
+      setReason('')
+    },
+    onError: (error) => toast.error(errorMessage(error, 'Could not change the password.')),
+  })
+
   const openUser = (u: Row) => {
     setSelected(u)
     setCampusId(text(u.universityId, ''))
+    setPassword('')
   }
+
+  const copyPassword = async () => {
+    try {
+      await navigator.clipboard.writeText(password)
+      toast.success('Password copied')
+    } catch {
+      toast.error('Could not copy. Select it and copy by hand.')
+    }
+  }
+
+  const selectedRole = selected ? String(selected.role ?? '').toLowerCase() : ''
+  const passwordLocked = ['admin', 'super_admin', 'head_of_ops'].includes(selectedRole)
 
   const idOf = (u: Row) => String(pickId(u))
 
@@ -272,6 +296,45 @@ export default function Users() {
               <p className="text-[12px] text-bad">{errorMessage(campuses.error, 'Could not load schools.')}</p>
             )}
 
+            {passwordLocked ? (
+              <p className="text-[12px] text-ink-faint">
+                {selectedRole === 'head_of_ops'
+                  ? 'Reset a head of operations password from the Campuses page.'
+                  : 'Admins change their own password.'}
+              </p>
+            ) : (
+              <div>
+                <div className="flex items-end gap-2">
+                  <Input
+                    label="New password"
+                    type="text"
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder="At least 8 characters"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="min-w-0 flex-1 font-mono"
+                  />
+                  <Button onClick={() => setPassword(generatePassword())}>Generate</Button>
+                  <Button disabled={!password} onClick={copyPassword}>
+                    Copy
+                  </Button>
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <p className="text-[12px] text-ink-faint">
+                    Signs them out on every device. Send them the new password yourself.
+                  </p>
+                  <Button
+                    loading={setUserPassword.isPending}
+                    disabled={password.length < 8}
+                    onClick={() => setUserPassword.mutate({ id: idOf(selected), password })}
+                  >
+                    Set password
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <Input
               label="Reason (recorded in the activity log)"
               placeholder="e.g. Chargeback fraud, confirmed with Paystack"
@@ -283,6 +346,13 @@ export default function Users() {
       </Modal>
     </>
   )
+}
+
+/** Twelve characters with no look-alikes (0/O, 1/l/I), easy to read out to a customer. */
+function generatePassword() {
+  const alphabet = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'
+  const bytes = crypto.getRandomValues(new Uint32Array(12))
+  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('')
 }
 
 /** Documents are keyed by `id` in some collections and `uid` in others. */

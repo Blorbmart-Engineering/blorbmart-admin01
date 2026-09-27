@@ -599,6 +599,11 @@ export const adminApi = {
   user: (id: string) => unwrap<Row>(api.get(`/api/admin/users/${id}`)),
   userAction: (id: string, action: string, reason?: string) =>
     unwrap<Row>(api.patch(`/api/admin/users/${id}/action`, { action, reason })),
+  /** Signs the user out everywhere too. Refused for admins and heads of ops. */
+  setUserPassword: (id: string, password: string, reason?: string) =>
+    unwrap<{ userId: string; signedOut: boolean }>(
+      api.post(`/api/admin/users/${id}/password`, { password, reason }),
+    ),
   /** Also moves the user's rider profile, store and menu, when they have them. */
   setUserCampus: (id: string, universityId: string, reason?: string) =>
     unwrap<{
