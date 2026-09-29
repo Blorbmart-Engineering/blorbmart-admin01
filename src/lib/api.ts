@@ -117,7 +117,19 @@ export interface Rider {
   rating: number
   deliveriesCompleted: number
   deliveriesCancelled: number
-  documents: { idType: string; idNumber: string } | null
+  documents: {
+    idType: string
+    idNumber: string
+    selfieUrl?: string | null
+    idImageUrl?: string | null
+  } | null
+  photoUrl: string | null
+  verification: {
+    status: VerificationStatus
+    reason: string | null
+    submittedAt: number | null
+    decidedAt: number | null
+  }
   lastSeenAt: number | null
   createdAt: number | null
 }
@@ -457,6 +469,18 @@ export const adminApi = {
     unwrap<{ rider: Row; wallet: Row; deliveries: Row[] }>(api.get(`/api/admin/riders/${uid}`)),
   setRiderStatus: (uid: string, status: string, reason?: string) =>
     unwrap<Row>(api.patch(`/api/admin/riders/${uid}/status`, { status, reason })),
+  setRiderVerification: (uid: string, status: 'verified' | 'rejected', reason?: string) =>
+    unwrap<{ uid: string; verificationStatus: VerificationStatus }>(
+      api.post(`/api/admin/riders/${uid}/verification`, { status, reason }),
+    ),
+
+  /** Every campus's SOS alerts — admins are paged for campuses with no head of ops. */
+  safety: {
+    list: (status?: string) =>
+      unwrap<SafetyAlertList>(api.get('/api/admin/safety-alerts', { params: clean({ status }) })),
+    update: (id: string, action: 'acknowledge' | 'resolve', note?: string) =>
+      unwrap<SafetyAlert>(api.post(`/api/admin/safety-alerts/${id}`, { action, note })),
+  } satisfies SafetyApi,
 
   deliveries: (params: Q = {}) =>
     unwrap<{ count: number; deliveries: Delivery[] }>(
@@ -830,17 +854,86 @@ export interface CampusVendor {
   createdAt: number | null
 }
 
+export type VerificationStatus = 'unverified' | 'pending' | 'verified' | 'rejected'
+
+export interface RiderDocuments {
+  idType: string | null
+  idNumber: string | null
+  selfieUrl: string | null
+  idImageUrl: string | null
+}
+
 export interface CampusRider {
   uid: string
   name: string | null
   email: string | null
   phone: string | null
   status: string
+  statusReason: string | null
   vehicleType: string | null
+  plateNumber: string | null
+  photoUrl: string | null
+  verification: {
+    status: VerificationStatus
+    reason: string | null
+    submittedAt: number | null
+    decidedAt: number | null
+  }
+  documents: RiderDocuments | null
   online: boolean
   deliveriesCompleted: number
   rating: number
   lastSeenAt: number | null
+}
+
+/* ── Safety (services/safetyService.js) ─────────────────────────────────── */
+
+export interface SafetyPerson {
+  uid: string | null
+  role: 'rider' | 'buyer'
+  name: string | null
+  phone: string | null
+  photoUrl?: string | null
+  vehicle?: string | null
+  plate?: string | null
+}
+
+export interface SafetyAlert {
+  id: string
+  /** open → acknowledged → resolved. Anything not resolved is live. */
+  status: 'open' | 'acknowledged' | 'resolved'
+  campusId: string | null
+  reporter: SafetyPerson
+  counterpart: SafetyPerson | null
+  orderId: string | null
+  deliveryId: string | null
+  deliveryStatus: string | null
+  storeName: string | null
+  dropoff: { addressLine1: string | null; landmark: string | null } | null
+  location: { latitude: number; longitude: number; accuracy: number | null; at: number | null } | null
+  mapsUrl: string | null
+  note: string | null
+  presses: number
+  acknowledgedBy: { name: string | null; role: string | null } | null
+  acknowledgedAt: number | null
+  resolvedBy: { name: string | null; role: string | null } | null
+  resolvedAt: number | null
+  /** What happened, as written by whoever closed it; 'marked_safe' when the person did. */
+  resolution: string | null
+  createdAt: number | null
+  updatedAt: number | null
+}
+
+export interface SafetyAlertList {
+  count: number
+  open: number
+  alerts: SafetyAlert[]
+}
+
+/** The same two calls from either console; the server decides the scope. */
+export interface SafetyApi {
+  list: (status?: string) => Promise<SafetyAlertList>
+  update: (id: string, action: 'acknowledge' | 'resolve', note?: string) => Promise<SafetyAlert>
 }
 
 /**
@@ -878,6 +971,24 @@ export const campusApi = {
     ),
 
   riders: () => unwrap<{ count: number; riders: CampusRider[] }>(api.get('/api/head-of-ops/riders')),
+
+  setRiderVerification: (uid: string, status: 'verified' | 'rejected', reason?: string) =>
+    unwrap<{ uid: string; verificationStatus: VerificationStatus }>(
+      api.post(`/api/head-of-ops/riders/${uid}/verification`, { status, reason }),
+    ),
+
+  /** Active or suspended only — the one lever campus ops has after a report. */
+  setRiderStatus: (uid: string, status: 'active' | 'suspended', reason?: string) =>
+    unwrap<{ uid: string; status: string; previous: string | null }>(
+      api.patch(`/api/head-of-ops/riders/${uid}/status`, { status, reason }),
+    ),
+
+  safety: {
+    list: (status?: string) =>
+      unwrap<SafetyAlertList>(api.get('/api/head-of-ops/safety-alerts', { params: clean({ status }) })),
+    update: (id: string, action: 'acknowledge' | 'resolve', note?: string) =>
+      unwrap<SafetyAlert>(api.post(`/api/head-of-ops/safety-alerts/${id}`, { action, note })),
+  } satisfies SafetyApi,
 
   broadcast: (body: {
     title: string

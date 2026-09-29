@@ -26,6 +26,7 @@ const Campuses = lazy(() => import('./pages/Campuses'))
 const AdminMarket = lazy(() => import('./pages/AdminMarket'))
 const Users = lazy(() => import('./pages/Users'))
 const Riders = lazy(() => import('./pages/Riders'))
+const Safety = lazy(() => import('./pages/Safety'))
 const Deliveries = lazy(() => import('./pages/Deliveries'))
 const Wallets = lazy(() => import('./pages/Wallets'))
 const Bills = lazy(() => import('./pages/Bills'))
@@ -48,6 +49,7 @@ const CampusOrders = lazy(() => import('./pages/campus/CampusOrders'))
 const CampusMarket = lazy(() => import('./pages/campus/CampusMarket'))
 const CampusVendors = lazy(() => import('./pages/campus/CampusVendors'))
 const CampusRiders = lazy(() => import('./pages/campus/CampusRiders'))
+const CampusSafety = lazy(() => import('./pages/campus/CampusSafety'))
 const CampusBroadcast = lazy(() => import('./pages/campus/CampusBroadcast'))
 
 const queryClient = new QueryClient({
@@ -179,6 +181,7 @@ export default function App() {
                 ['/events', <Events key="ev" />],
                 ['/users', <Users key="u" />],
                 ['/riders', <Riders key="r" />],
+                ['/safety', <Safety key="sf" />],
                 ['/deliveries', <Deliveries key="dl" />],
                 ['/careers', <Careers key="cj" />],
                 ['/wallets', <Wallets key="w" />],
@@ -204,6 +207,7 @@ export default function App() {
                 ['/campus/market', <CampusMarket key="cm" />],
                 ['/campus/vendors', <CampusVendors key="cv" />],
                 ['/campus/riders', <CampusRiders key="cr" />],
+                ['/campus/safety', <CampusSafety key="cs" />],
                 ['/campus/broadcast', <CampusBroadcast key="cb" />],
               ] as const
             ).map(([path, element]) => (

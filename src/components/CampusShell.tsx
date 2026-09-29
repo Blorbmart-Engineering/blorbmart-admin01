@@ -9,10 +9,13 @@ import {
   LogOut,
   Megaphone,
   Menu,
+  ShieldAlert,
   ShoppingBag,
   X,
 } from 'lucide-react'
 import { useSession } from '../contexts/SessionContext'
+import { campusApi } from '../lib/api'
+import { SafetyCount } from './SafetyAlerts'
 import { Badge, cn } from './ui'
 import { BrandTile } from './Brand'
 
@@ -21,7 +24,7 @@ import { BrandTile } from './Brand'
  *
  * Deliberately much smaller than the admin shell: a head of operations runs
  * one campus, so there is no campus switcher, no platform-wide anything, and
- * no grouping — six destinations do not need section headers, and adding them
+ * no grouping — seven destinations do not need section headers, and adding them
  * would make the job look bigger than it is.
  *
  * The campus name sits in the rail where the admin console puts "Control",
@@ -34,6 +37,7 @@ const ITEMS: { to: string; label: string; icon: typeof Bike }[] = [
   { to: '/campus/market', label: 'Local market', icon: Carrot },
   { to: '/campus/vendors', label: 'Vendors', icon: Building2 },
   { to: '/campus/riders', label: 'Riders', icon: Bike },
+  { to: '/campus/safety', label: 'Safety', icon: ShieldAlert },
   { to: '/campus/broadcast', label: 'Message campus', icon: Megaphone },
 ]
 
@@ -55,6 +59,7 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
         >
           <item.icon className="w-4 h-4 shrink-0" aria-hidden />
           {item.label}
+          {item.to === '/campus/safety' && <SafetyCount api={campusApi.safety} queryKey="campus-safety" />}
         </NavLink>
       ))}
     </nav>

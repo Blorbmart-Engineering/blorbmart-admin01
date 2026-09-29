@@ -21,6 +21,7 @@ import {
   Package,
   Receipt,
   Settings,
+  ShieldAlert,
   ShoppingBag,
   Truck,
   Users,
@@ -29,6 +30,8 @@ import {
   X,
 } from 'lucide-react'
 import { useSession } from '../contexts/SessionContext'
+import { adminApi } from '../lib/api'
+import { SafetyCount } from './SafetyAlerts'
 import { cn } from './ui'
 import { BrandTile } from './Brand'
 
@@ -64,6 +67,7 @@ const GROUPS: { label: string; items: { to: string; label: string; icon: typeof 
     items: [
       { to: '/users', label: 'Users', icon: Users },
       { to: '/riders', label: 'Riders', icon: Bike },
+      { to: '/safety', label: 'Safety', icon: ShieldAlert },
       { to: '/deliveries', label: 'Deliveries', icon: Truck },
       { to: '/careers', label: 'Careers', icon: Briefcase },
     ],
@@ -119,6 +123,7 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
                 >
                   <item.icon className="w-4 h-4 shrink-0" aria-hidden />
                   {item.label}
+                  {item.to === '/safety' && <SafetyCount api={adminApi.safety} queryKey="admin-safety" />}
                 </NavLink>
               </li>
             ))}

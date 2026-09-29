@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { Bike, Search } from 'lucide-react'
 import { adminApi, errorMessage, type Rider } from '../lib/api'
 import { ago, count, money, text, titleCase } from '../lib/format'
+import RiderVerificationDialog, { VerificationBadge } from '../components/RiderVerification'
 import {
   Badge,
   Button,
@@ -51,6 +52,7 @@ export default function Riders() {
   const [selected, setSelected] = useState<Rider | null>(null)
   const [pendingStatus, setPendingStatus] = useState<string>('')
   const [reason, setReason] = useState('')
+  const [reviewing, setReviewing] = useState<Rider | null>(null)
 
   const setParam = (key: string, value: string) => {
     const next = new URLSearchParams(params)
@@ -117,6 +119,11 @@ export default function Riders() {
           {r.online && <Badge tone="good">online</Badge>}
         </div>
       ),
+    },
+    {
+      key: 'verified',
+      header: 'Photo check',
+      render: (r) => <VerificationBadge status={r.verification?.status ?? 'unverified'} />,
     },
     {
       key: 'trips',
@@ -228,6 +235,14 @@ export default function Riders() {
           selected && (
             <>
               <Button onClick={() => setSelected(null)}>Close</Button>
+              <Button
+                onClick={() => {
+                  setReviewing(selected)
+                  setSelected(null)
+                }}
+              >
+                {selected.verification?.status === 'pending' ? 'Review photos' : 'Photos'}
+              </Button>
               {selected.status !== 'active' && (
                 <Button
                   variant="primary"
@@ -258,6 +273,23 @@ export default function Riders() {
       >
         {selected && <RiderDetail rider={selected} reason={reason} onReason={setReason} />}
       </Modal>
+
+      {reviewing && (
+        <RiderVerificationDialog
+          rider={{
+            uid: reviewing.uid,
+            name: `${reviewing.firstName} ${reviewing.lastName}`.trim() || reviewing.displayName || null,
+            phone: reviewing.phone,
+            vehicleType: reviewing.vehicleType,
+            plateNumber: reviewing.plateNumber,
+            verification: reviewing.verification ?? { status: 'unverified', reason: null, submittedAt: null },
+            documents: reviewing.documents,
+          }}
+          decide={adminApi.setRiderVerification}
+          onClose={() => setReviewing(null)}
+          onDone={() => queryClient.invalidateQueries({ queryKey: ['riders'] })}
+        />
+      )}
     </>
   )
 }
