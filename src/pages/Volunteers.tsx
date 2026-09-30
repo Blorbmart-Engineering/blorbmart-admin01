@@ -1,8 +1,14 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { Download, HandHeart, Trash2 } from 'lucide-react'
-import { adminApi, errorMessage, type VolunteerSignup, type VolunteerStatus } from '../lib/api'
+import { Download, HandHeart, Link2, Settings2, Trash2 } from 'lucide-react'
+import {
+  adminApi,
+  errorMessage,
+  type VolunteerForm,
+  type VolunteerSignup,
+  type VolunteerStatus,
+} from '../lib/api'
 import { ago, count, dateOnly } from '../lib/format'
 import {
   Badge,
@@ -11,10 +17,12 @@ import {
   DataTable,
   Detail,
   Empty,
+  Input,
   Modal,
   PageHeader,
   Select,
   Stat,
+  Textarea,
   Toolbar,
   type Column,
   type Tone,
@@ -22,12 +30,43 @@ import {
 
 /**
  * Volunteers: everyone who filled in the form at blorbmart.com.ng/volunteer,
- * and the decision made about each of them.
+ * the decision made about each of them, and the form itself.
+ *
+ * What the public page says is set here, not in the website's code: its
+ * title, the intro line, the teams, the message after signing up, and
+ * whether it is open. The page shows a form only once there are at least two
+ * teams to choose between.
  *
  * The whole list is loaded once and filtered here. It is a few hundred rows
  * at most, and a reviewer flips between teams constantly — a round trip per
  * filter would make that feel like waiting.
  */
+
+/** Where the form can be filled in by anyone. */
+const PUBLIC_PAGE = 'https://www.blorbmart.com.ng/volunteer'
+
+/** The settings as typed. Teams are one per line, which is how a list is written. */
+interface FormDraft {
+  title: string
+  intro: string
+  teams: string
+  confirmation: string
+  open: boolean
+}
+
+const draftOf = (form: VolunteerForm): FormDraft => ({
+  title: form.title,
+  intro: form.intro,
+  teams: form.teams.join('\n'),
+  confirmation: form.confirmation,
+  open: form.open,
+})
+
+const teamsOf = (text: string) =>
+  text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
 
 const STATUSES: VolunteerStatus[] = ['new', 'selected', 'waitlisted', 'declined']
 
@@ -108,18 +147,43 @@ export default function Volunteers() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [detailId, setDetailId] = useState<string | null>(null)
 
+  const [editor, setEditor] = useState<FormDraft | null>(null)
+
   const signups = useQuery({ queryKey: ['volunteer-signups'], queryFn: adminApi.volunteerSignups, staleTime: 15_000 })
+  const form = useQuery({ queryKey: ['volunteer-form'], queryFn: adminApi.volunteerForm, staleTime: 30_000 })
   const all = useMemo(() => signups.data?.signups ?? [], [signups.data])
 
-  // Every team anybody chose or was put on. The website owns the real list;
-  // this is just what is in the data.
-  const teams = useMemo(
-    () =>
-      [...new Set(all.flatMap((row) => [row.firstChoiceTeam, row.secondChoiceTeam, row.assignedTeam]).filter(Boolean))].sort(
-        (a, b) => a.localeCompare(b),
-      ),
-    [all],
-  )
+  // The teams on the form, then any a sign-up still carries from before the
+  // list was edited: renaming a team must not orphan the people who chose it.
+  const teams = useMemo(() => {
+    const listed = form.data?.teams ?? []
+    const inData = all
+      .flatMap((row) => [row.firstChoiceTeam, row.secondChoiceTeam, row.assignedTeam])
+      .filter((team) => team && !listed.includes(team))
+    return [...listed, ...[...new Set(inData)].sort((a, b) => a.localeCompare(b))]
+  }, [all, form.data])
+
+  const saveForm = useMutation({
+    mutationFn: (draft: FormDraft) => adminApi.saveVolunteerForm({ ...draft, teams: teamsOf(draft.teams) }),
+    onSuccess: (saved) => {
+      toast.success(saved.accepting ? 'Saved. The form is open.' : 'Saved. The form is not open yet.')
+      queryClient.setQueryData(['volunteer-form'], saved)
+      setEditor(null)
+    },
+    onError: (error) => toast.error(errorMessage(error, 'Could not save the form settings.')),
+  })
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(PUBLIC_PAGE)
+      toast.success('Public link copied')
+    } catch {
+      // Clipboard access can be refused; the URL itself is the useful part.
+      toast.error(PUBLIC_PAGE)
+    }
+  }
+
+  const draftTeams = editor ? teamsOf(editor.teams) : []
 
   const rows = all.filter(
     (row) =>
@@ -206,13 +270,55 @@ export default function Volunteers() {
     <>
       <PageHeader
         title="Volunteers"
-        subtitle="Sign-ups from blorbmart.com.ng/volunteer for Build Beyond the Classroom."
+        subtitle="Sign-ups from blorbmart.com.ng/volunteer, and what that page says."
         actions={
-          <Button size="sm" icon={Download} disabled={!rows.length} onClick={() => exportCsv(rows)}>
-            Export {rows.length === all.length ? 'all' : 'these'} as CSV
-          </Button>
+          <>
+            <Button size="sm" icon={Link2} onClick={() => void copyLink()}>
+              Copy link
+            </Button>
+            <Button size="sm" icon={Download} disabled={!rows.length} onClick={() => exportCsv(rows)}>
+              Export {rows.length === all.length ? 'all' : 'these'} as CSV
+            </Button>
+            <Button
+              size="sm"
+              variant="primary"
+              icon={Settings2}
+              disabled={!form.data}
+              onClick={() => form.data && setEditor(draftOf(form.data))}
+            >
+              Form settings
+            </Button>
+          </>
         }
       />
+
+      {/* The one thing that stops the public page working, said where it is fixed. */}
+      {form.isError ? (
+        <Card className="mb-5">
+          <p className="text-[13px] font-semibold text-bad">
+            The form settings could not be loaded: {errorMessage(form.error)}
+          </p>
+        </Card>
+      ) : (
+        form.data &&
+        !form.data.accepting && (
+          <Card className="mb-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-[14px] font-bold text-ink">The public form is not taking sign-ups</p>
+                <p className="mt-1 text-[13px] text-ink-faint">
+                  {form.data.open
+                    ? `It needs at least two teams to choose between, and has ${form.data.teams.length}. Add them in Form settings.`
+                    : 'It is switched off. Turn it back on in Form settings.'}
+                </p>
+              </div>
+              <Button size="sm" variant="primary" onClick={() => setEditor(draftOf(form.data))}>
+                Open form settings
+              </Button>
+            </div>
+          </Card>
+        )
+      )}
 
       <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label="Signed up" value={count(all.length)} icon={HandHeart} loading={signups.isLoading} />
@@ -274,6 +380,89 @@ export default function Volunteers() {
           }
         />
       </Card>
+
+      {/* ── What the public page says ─────────────────────────────────── */}
+      <Modal
+        open={Boolean(editor)}
+        onClose={() => setEditor(null)}
+        title="Form settings"
+        wide
+        footer={
+          editor && (
+            <>
+              <Button onClick={() => setEditor(null)}>Cancel</Button>
+              <Button
+                variant="primary"
+                loading={saveForm.isPending}
+                disabled={editor.title.trim().length < 3 || editor.confirmation.trim().length < 3}
+                onClick={() => saveForm.mutate(editor)}
+              >
+                Save
+              </Button>
+            </>
+          )
+        }
+      >
+        {editor && (
+          <div className="space-y-3.5">
+            <Input
+              label="Page title"
+              placeholder="Volunteer for Build Beyond the Classroom"
+              maxLength={120}
+              value={editor.title}
+              onChange={(e) => setEditor({ ...editor, title: e.target.value })}
+            />
+            <Textarea
+              label="Intro line"
+              rows={3}
+              maxLength={600}
+              placeholder="What the event is, and what a volunteer gets out of it."
+              value={editor.intro}
+              onChange={(e) => setEditor({ ...editor, intro: e.target.value })}
+            />
+            <div>
+              <Textarea
+                label="Teams — one per line"
+                rows={8}
+                placeholder={'Logistics\nMedia\nWelfare'}
+                value={editor.teams}
+                onChange={(e) => setEditor({ ...editor, teams: e.target.value })}
+              />
+              <p className="mt-1.5 text-[12px] text-ink-faint">
+                {draftTeams.length} team{draftTeams.length === 1 ? '' : 's'}, shown in both dropdowns in this order.
+                {draftTeams.length < 2 && ' The form stays closed until there are at least two.'}
+              </p>
+            </div>
+            <Textarea
+              label="Message after signing up"
+              rows={3}
+              maxLength={600}
+              placeholder="Thank you for signing up to volunteer! We will add selected volunteers to their team's WhatsApp group by Friday 10 October."
+              value={editor.confirmation}
+              onChange={(e) => setEditor({ ...editor, confirmation: e.target.value })}
+            />
+            <label className="flex cursor-pointer items-start gap-2.5 text-[13px] text-ink">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 accent-brand"
+                checked={editor.open}
+                onChange={(e) => setEditor({ ...editor, open: e.target.checked })}
+              />
+              <span>
+                <span className="font-semibold">Take sign-ups</span>
+                <span className="block text-[12px] text-ink-faint">
+                  Untick to close the form. The page stays up and says sign-ups are not open.
+                </span>
+              </span>
+            </label>
+            {form.data?.updatedBy && (
+              <p className="text-[12px] text-ink-faint">
+                Last saved by {form.data.updatedBy} · {ago(form.data.updatedAt)}
+              </p>
+            )}
+          </div>
+        )}
+      </Modal>
 
       <Modal
         open={Boolean(detail)}

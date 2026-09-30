@@ -443,6 +443,23 @@ export interface VolunteerSignup {
   reviewedBy: string | null
 }
 
+/** What the public volunteer page says. Every word of it is set here. */
+export interface VolunteerForm {
+  title: string
+  intro: string
+  /** The teams a volunteer chooses between, in this order. */
+  teams: string[]
+  /** Shown once somebody has signed up. */
+  confirmation: string
+  open: boolean
+  /** Open and with at least two teams: the only state the page shows a form in. */
+  accepting: boolean
+  updatedAt: string | null
+  updatedBy: string | null
+}
+
+export type VolunteerFormDraft = Pick<VolunteerForm, 'title' | 'intro' | 'teams' | 'confirmation' | 'open'>
+
 /* ──────────────────────────────── Client ─────────────────────────────── */
 
 type Q = Record<string, string | number | undefined | null>
@@ -777,6 +794,9 @@ export const adminApi = {
     unwrap<VolunteerSignup>(api.patch(`/api/admin/volunteers/${id}`, body)),
   deleteVolunteerSignup: (id: string) =>
     unwrap<{ id: string; deleted: boolean }>(api.delete(`/api/admin/volunteers/${id}`)),
+  volunteerForm: () => unwrap<VolunteerForm>(api.get('/api/admin/volunteers/form')),
+  saveVolunteerForm: (body: Partial<VolunteerFormDraft>) =>
+    unwrap<VolunteerForm>(api.put('/api/admin/volunteers/form', body)),
 
   /**
    * The CV, fetched with the admin's token and handed to the browser.
