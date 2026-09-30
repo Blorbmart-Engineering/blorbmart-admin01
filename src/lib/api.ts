@@ -415,6 +415,34 @@ export interface CareerApplication {
   reviewedBy: string | null
 }
 
+/* ────────────────────────────── Volunteers ───────────────────────────── */
+
+export type VolunteerStatus = 'new' | 'selected' | 'waitlisted' | 'declined'
+
+/** One sign-up from blorbmart.com.ng/volunteer (services/volunteerService.js). */
+export interface VolunteerSignup {
+  id: string
+  fullName: string
+  phone: string
+  email: string
+  department: string
+  level: string
+  firstChoiceTeam: string
+  secondChoiceTeam: string
+  wantsTeamLead: boolean
+  experience: string
+  availableBothDays: boolean
+  availableForPlanning: boolean
+  status: VolunteerStatus
+  /** The team a reviewer put them on. Empty until somebody decides. */
+  assignedTeam: string
+  /** More than one means they filled the form in again; the latest answers win. */
+  submissions: number
+  createdAt: string | null
+  updatedAt: string | null
+  reviewedBy: string | null
+}
+
 /* ──────────────────────────────── Client ─────────────────────────────── */
 
 type Q = Record<string, string | number | undefined | null>
@@ -742,6 +770,13 @@ export const adminApi = {
     ),
   setApplicationStatus: (id: string, status: ApplicationStatus) =>
     unwrap<CareerApplication>(api.patch(`/api/admin/careers/applications/${id}`, { status })),
+
+  /* Volunteer sign-ups (routes/adminVolunteers.js) */
+  volunteerSignups: () => unwrap<{ signups: VolunteerSignup[] }>(api.get('/api/admin/volunteers')),
+  updateVolunteerSignup: (id: string, body: { status?: VolunteerStatus; assignedTeam?: string }) =>
+    unwrap<VolunteerSignup>(api.patch(`/api/admin/volunteers/${id}`, body)),
+  deleteVolunteerSignup: (id: string) =>
+    unwrap<{ id: string; deleted: boolean }>(api.delete(`/api/admin/volunteers/${id}`)),
 
   /**
    * The CV, fetched with the admin's token and handed to the browser.

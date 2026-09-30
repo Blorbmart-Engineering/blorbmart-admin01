@@ -11,6 +11,7 @@ import {
   CalendarDays,
   ChevronDown,
   GraduationCap,
+  HandHeart,
   Images,
   LayoutDashboard,
   LogOut,
@@ -70,6 +71,7 @@ const GROUPS: { label: string; items: { to: string; label: string; icon: typeof 
       { to: '/safety', label: 'Safety', icon: ShieldAlert },
       { to: '/deliveries', label: 'Deliveries', icon: Truck },
       { to: '/careers', label: 'Careers', icon: Briefcase },
+      { to: '/volunteers', label: 'Volunteers', icon: HandHeart },
     ],
   },
   {

@@ -37,6 +37,7 @@ const Events = lazy(() => import('./pages/Events'))
 const Broadcast = lazy(() => import('./pages/Broadcast'))
 const Announcements = lazy(() => import('./pages/Announcements'))
 const Careers = lazy(() => import('./pages/Careers'))
+const Volunteers = lazy(() => import('./pages/Volunteers'))
 const GiftCards = lazy(() => import('./pages/GiftCards'))
 const Commissions = lazy(() => import('./pages/Commissions'))
 const Profit = lazy(() => import('./pages/Profit'))
@@ -184,6 +185,7 @@ export default function App() {
                 ['/safety', <Safety key="sf" />],
                 ['/deliveries', <Deliveries key="dl" />],
                 ['/careers', <Careers key="cj" />],
+                ['/volunteers', <Volunteers key="vl" />],
                 ['/wallets', <Wallets key="w" />],
                 ['/bills', <Bills key="b" />],
                 ['/gift-cards', <GiftCards key="gc" />],
