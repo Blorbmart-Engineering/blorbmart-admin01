@@ -44,6 +44,8 @@ export default function Settings() {
   const [draft, setDraft] = useState<Record<string, string>>({})
   const [fees, setFees] = useState<Record<string, string>>({})
   const [notes, setNotes] = useState('')
+  const [referralBonus, setReferralBonus] = useState('')
+  const [referralLive, setReferralLive] = useState(false)
 
   /** The stored fee table, with every category present. */
   const storedFees = ((settings.data as Row | undefined)?.billFees ?? {}) as Record<string, unknown>
@@ -64,6 +66,8 @@ export default function Settings() {
     setFees(nextFees)
 
     setNotes(String(data.addressNotes ?? ''))
+    setReferralBonus(String(data.buyerReferralRewardNaira ?? ''))
+    setReferralLive(data.buyerReferralRewardsLive === true)
   }, [settings.data])
 
   const save = useMutation({
@@ -90,6 +94,12 @@ export default function Settings() {
       if (feesChanged) patch.billFees = feePatch
 
       if (notes !== String(original.addressNotes ?? '')) patch.addressNotes = notes
+      if (referralBonus !== String(original.buyerReferralRewardNaira ?? '')) {
+        patch.buyerReferralRewardNaira = Number(referralBonus)
+      }
+      if (referralLive !== (original.buyerReferralRewardsLive === true)) {
+        patch.buyerReferralRewardsLive = referralLive
+      }
       return adminApi.updateSettings(patch)
     },
     onSuccess: () => {
@@ -103,7 +113,14 @@ export default function Settings() {
   const dirty =
     FIELDS.some((f) => draft[f.key] !== undefined && draft[f.key] !== String(original[f.key] ?? '')) ||
     BILL_FEES.some((f) => fees[f.key] !== undefined && fees[f.key] !== storedFee(f.key)) ||
-    notes !== String(original.addressNotes ?? '')
+    notes !== String(original.addressNotes ?? '') ||
+    referralBonus !== String(original.buyerReferralRewardNaira ?? '') ||
+    referralLive !== (original.buyerReferralRewardsLive === true)
+
+  const maxBonus = Number(original.maxBuyerReferralReward ?? 5000)
+  const bonusValue = Number(referralBonus)
+  const bonusInvalid =
+    referralBonus.trim() === '' || !Number.isFinite(bonusValue) || bonusValue < 0 || bonusValue > maxBonus
 
   if (settings.isError) {
     return (
@@ -127,7 +144,7 @@ export default function Settings() {
             size="sm"
             icon={Save}
             loading={save.isPending}
-            disabled={!dirty}
+            disabled={!dirty || (referralBonus !== String(original.buyerReferralRewardNaira ?? '') && bonusInvalid)}
             onClick={() => save.mutate()}
           >
             {dirty ? 'Save changes' : 'Saved'}
@@ -194,6 +211,62 @@ export default function Settings() {
               The fee is added to the price, never taken out of it: with ₦10 on airtime, a ₦500
               top-up charges ₦510 and still delivers ₦500. It is refunded along with the purchase
               whenever delivery fails. Set a category to 0 to charge nothing.
+            </p>
+          </div>
+        </Card>
+
+        <Card
+          title="Referral bonus"
+          subtitle="Paid into a customer's wallet for each friend who joins with their invite link"
+        >
+          <div className="space-y-3.5">
+            <div>
+              <Input
+                label="Bonus per friend"
+                type="number"
+                inputMode="decimal"
+                min={0}
+                max={maxBonus}
+                disabled={settings.isLoading}
+                value={referralBonus}
+                onChange={(e) => setReferralBonus(e.target.value)}
+              />
+              <p className="mt-1 text-[11.5px] text-ink-faint">
+                In naira, up to ₦{maxBonus.toLocaleString()}
+                {referralBonus !== String(original.buyerReferralRewardNaira ?? '') && (
+                  <span className={bonusInvalid ? 'ml-1.5 font-semibold text-bad' : 'ml-1.5 font-semibold text-warn'}>
+                    {bonusInvalid
+                      ? `enter 0 to ₦${maxBonus.toLocaleString()}`
+                      : `was ${String(original.buyerReferralRewardNaira ?? '—')}`}
+                  </span>
+                )}
+              </p>
+            </div>
+
+            <label className="flex items-start gap-2.5 rounded-lg border border-line bg-surface-sunk p-3">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 accent-[var(--color-brand)]"
+                checked={referralLive}
+                disabled={settings.isLoading}
+                onChange={(e) => setReferralLive(e.target.checked)}
+              />
+              <span>
+                <span className="block text-[13px] font-semibold text-ink">Pay the referral bonus</span>
+                <span className="block text-[12px] text-ink-faint">
+                  {referralLive
+                    ? 'On — each new referral pays the bonus above, straight into the wallet.'
+                    : 'Off — invites are still recorded, but nobody is paid.'}
+                </span>
+              </span>
+            </label>
+          </div>
+
+          <div className="mt-4 rounded-lg border border-line bg-raised px-3 py-2.5">
+            <p className="text-[12px] leading-relaxed text-ink-soft">
+              A new amount applies to referrals from the moment it is saved; people already
+              referred keep what they were promised. Friends who joined while the bonus was off are
+              never paid for later.
             </p>
           </div>
         </Card>
