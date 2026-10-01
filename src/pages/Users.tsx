@@ -134,7 +134,10 @@ export default function Users() {
 
   const rows = users.data?.users ?? []
   const pagination = users.data?.pagination
-  const isSuspended = selected && String(selected.accountStatus).toLowerCase() !== 'active'
+  // Same default as the Status badge: accounts created outside the apps (REST
+  // sign-ups, old docs) have no accountStatus and are active. Reading the raw
+  // field here showed "Reactivate" on an account the modal called active.
+  const isSuspended = selected && text(selected.accountStatus, 'active').toLowerCase() !== 'active'
 
   return (
     <>
