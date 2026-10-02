@@ -1210,4 +1210,79 @@ export function marketApi(campusId?: string) {
   }
 }
 
+/* ───────────────────────── Student marketplace ───────────────────────── */
+
+export interface ModerationListing {
+  id: string
+  title: string
+  description: string
+  price: number
+  categoryLabel: string
+  conditionLabel: string
+  photos: string[]
+  status: 'active' | 'reserved' | 'sold' | 'hidden' | 'removed'
+  sellerId: string
+  sellerName: string
+  reportCount: number
+  hiddenReason: string | null
+  createdAt: string | null
+  reports?: { reason: string; note: string | null; at: string | null }[]
+}
+
+export interface ModerationOrder {
+  id: string
+  status: string
+  listing: { id: string; title: string; photo: string | null; price: number }
+  amount: number
+  buyer: { name: string; phone?: string | null }
+  seller: { name: string; phone?: string | null }
+  meetupNote: string | null
+  dispute: { reason: string; by: string; openedAt: string | null; resolution: unknown } | null
+  createdAt: string | null
+  acceptedAt: string | null
+}
+
+export type SellerStatus = 'unverified' | 'pending' | 'verified' | 'rejected' | 'suspended'
+
+export interface MarketSeller {
+  uid: string
+  status: SellerStatus
+  reason: string | null
+  fullName: string | null
+  matricNumber: string | null
+  phone: string | null
+  email: string | null
+  idPhotoUrl: string | null
+  selfieUrl: string | null
+  submittedAt: string | null
+  decidedAt: string | null
+}
+
+export interface ModerationQueue {
+  listings: ModerationListing[]
+  disputes: ModerationOrder[]
+  stale: ModerationOrder[]
+}
+
+/**
+ * The marketplace queue: a head of operations' own campus, or — given a
+ * campusId — any campus, for an admin. Same shape both ways.
+ */
+export function marketplaceApi(campusId?: string) {
+  const base = campusId
+    ? `/api/admin/campuses/${encodeURIComponent(campusId)}/marketplace`
+    : '/api/head-of-ops/marketplace'
+
+  return {
+    queue: () => unwrap<ModerationQueue>(api.get(base)),
+    moderate: (id: string, action: 'hide' | 'restore' | 'dismiss', reason?: string) =>
+      unwrap<ModerationListing>(api.post(`${base}/listings/${encodeURIComponent(id)}`, { action, reason })),
+    resolve: (id: string, outcome: 'refund' | 'release', note?: string) =>
+      unwrap<ModerationOrder>(api.post(`${base}/orders/${encodeURIComponent(id)}/resolve`, { outcome, note })),
+    sellers: (status: SellerStatus) => unwrap<MarketSeller[]>(api.get(`${base}/sellers`, { params: { status } })),
+    reviewSeller: (uid: string, decision: 'verified' | 'rejected' | 'suspended', reason?: string) =>
+      unwrap<MarketSeller>(api.post(`${base}/sellers/${encodeURIComponent(uid)}`, { decision, reason })),
+  }
+}
+
 export default api
