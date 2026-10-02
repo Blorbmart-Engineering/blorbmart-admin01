@@ -1225,6 +1225,63 @@ export function marketApi(campusId?: string) {
   }
 }
 
+/* ───────────────────────────── Market runs ────────────────────────────── */
+
+export interface MarketRun {
+  offerId: string
+  orderId: string
+  itemCount: number
+  itemSummary: string[]
+  dropoffArea: string | null
+  distanceKm: number | null
+  cashToPay: number
+  deliveryEarning: number
+  deliverBy: string | null
+  createdAt: string | null
+  expired: boolean
+  declinedCount: number
+}
+
+export interface MarketRunRider {
+  uid: string
+  name: string
+  phone: string | null
+  online: boolean
+  busy: boolean
+  verified: boolean
+  sourcingLimit: number
+  deliveriesCompleted: number
+}
+
+export interface MarketRunUnderWay {
+  deliveryId: string
+  orderId: string
+  riderId: string
+  riderName: string
+  status: string
+  cashToPay: number
+  assignedBy: { uid: string | null; role: string | null; overrideLimit: boolean } | null
+  assignedAt: string | null
+}
+
+/**
+ * Market runs waiting for a rider: a head of operations' own campus, or —
+ * given a campusId — any campus, for an admin. A 409 with code OVER_LIMIT
+ * from assign means the rider would front more than their limit.
+ */
+export function marketRunsApi(campusId?: string) {
+  const base = campusId
+    ? `/api/admin/campuses/${encodeURIComponent(campusId)}/market-runs`
+    : '/api/head-of-ops/market-runs'
+  return {
+    list: () => unwrap<{ runs: MarketRun[]; riders: MarketRunRider[]; running: MarketRunUnderWay[] }>(api.get(base)),
+    assign: (offerId: string, riderId: string, overrideLimit = false) =>
+      unwrap<{ deliveryId: string; orderId: string; riderId: string; riderName: string }>(
+        api.post(`${base}/${encodeURIComponent(offerId)}/assign`, { riderId, overrideLimit }),
+      ),
+  }
+}
+
 /* ───────────────────────── Student marketplace ───────────────────────── */
 
 export interface ModerationListing {

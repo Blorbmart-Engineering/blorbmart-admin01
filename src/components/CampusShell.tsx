@@ -12,6 +12,7 @@ import {
   ShieldAlert,
   ShoppingBag,
   Store,
+  Truck,
   X,
 } from 'lucide-react'
 import { useSession } from '../contexts/SessionContext'
@@ -36,6 +37,7 @@ const ITEMS: { to: string; label: string; icon: typeof Bike }[] = [
   { to: '/campus', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/campus/orders', label: 'Orders', icon: ShoppingBag },
   { to: '/campus/market', label: 'Local market', icon: Carrot },
+  { to: '/campus/market-runs', label: 'Market runs', icon: Truck },
   { to: '/campus/marketplace', label: 'Student marketplace', icon: Store },
   { to: '/campus/vendors', label: 'Vendors', icon: Building2 },
   { to: '/campus/riders', label: 'Riders', icon: Bike },

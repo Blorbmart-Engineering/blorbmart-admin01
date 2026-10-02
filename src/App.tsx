@@ -25,6 +25,7 @@ const Vendors = lazy(() => import('./pages/Vendors'))
 const Campuses = lazy(() => import('./pages/Campuses'))
 const AdminMarket = lazy(() => import('./pages/AdminMarket'))
 const AdminMarketplace = lazy(() => import('./pages/AdminMarketplace'))
+const AdminMarketRuns = lazy(() => import('./pages/AdminMarketRuns'))
 const Users = lazy(() => import('./pages/Users'))
 const Riders = lazy(() => import('./pages/Riders'))
 const Safety = lazy(() => import('./pages/Safety'))
@@ -50,6 +51,7 @@ const CampusDashboard = lazy(() => import('./pages/campus/CampusDashboard'))
 const CampusOrders = lazy(() => import('./pages/campus/CampusOrders'))
 const CampusMarket = lazy(() => import('./pages/campus/CampusMarket'))
 const CampusMarketplace = lazy(() => import('./pages/campus/CampusMarketplace'))
+const CampusMarketRuns = lazy(() => import('./pages/campus/CampusMarketRuns'))
 const CampusVendors = lazy(() => import('./pages/campus/CampusVendors'))
 const CampusRiders = lazy(() => import('./pages/campus/CampusRiders'))
 const CampusSafety = lazy(() => import('./pages/campus/CampusSafety'))
@@ -182,6 +184,7 @@ export default function App() {
                 ['/campuses', <Campuses key="c" />],
                 ['/campuses/:campusId/market', <AdminMarket key="cmk" />],
                 ['/campuses/:campusId/marketplace', <AdminMarketplace key="cmp" />],
+                ['/campuses/:campusId/market-runs', <AdminMarketRuns key="cmr" />],
                 ['/events', <Events key="ev" />],
                 ['/users', <Users key="u" />],
                 ['/riders', <Riders key="r" />],
@@ -211,6 +214,7 @@ export default function App() {
                 ['/campus/orders', <CampusOrders key="co" />],
                 ['/campus/market', <CampusMarket key="cm" />],
                 ['/campus/marketplace', <CampusMarketplace key="cmp" />],
+                ['/campus/market-runs', <CampusMarketRuns key="cmr" />],
                 ['/campus/vendors', <CampusVendors key="cv" />],
                 ['/campus/riders', <CampusRiders key="cr" />],
                 ['/campus/safety', <CampusSafety key="cs" />],

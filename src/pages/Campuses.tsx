@@ -15,6 +15,7 @@ import {
   AlertTriangle,
   Carrot,
   Store,
+  Truck,
 } from 'lucide-react'
 import { adminApi, errorMessage, type CampusRow } from '../lib/api'
 import { count, dateOnly, text } from '../lib/format'
@@ -161,6 +162,14 @@ export default function Campuses() {
             className="inline-flex h-8 items-center justify-center rounded-lg px-3 text-ink-soft transition-colors hover:bg-raised hover:text-ink"
           >
             <Store className="h-4 w-4" aria-hidden />
+          </Link>
+          <Link
+            to={`/campuses/${encodeURIComponent(c.id)}/market-runs`}
+            aria-label={`Market runs for ${c.name}`}
+            title="Market runs"
+            className="inline-flex h-8 items-center justify-center rounded-lg px-3 text-ink-soft transition-colors hover:bg-raised hover:text-ink"
+          >
+            <Truck className="h-4 w-4" aria-hidden />
           </Link>
           <Button
             size="sm"
