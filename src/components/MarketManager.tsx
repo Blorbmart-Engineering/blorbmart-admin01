@@ -58,7 +58,13 @@ import {
 
 const STALE_PRICE_DAYS = 7
 
-const UNIT_SUGGESTIONS = ['1 kg', '½ kg', 'per piece', 'per bunch', 'per tuber', '1 derica', '1 paint bucket', '1 litre']
+/**
+ * Shortcuts under the "Price is for" box. Only shortcuts: markets sell by
+ * congo, mudu, derica and whatever else is local, so the field is typed, and
+ * anything can go in it. (It used to be a datalist, which browsers draw as a
+ * dropdown, so campus leads took it for a fixed list.)
+ */
+const UNIT_SUGGESTIONS = ['1 kg', '½ kg', '1 congo', '1 mudu', '1 derica', '1 paint', 'per piece', 'per bunch', 'per tuber', '1 litre']
 
 const hourLabel = (h: number) => {
   const hour = h % 24
@@ -535,18 +541,27 @@ function ProductDialog({
           <div>
             <Input
               label="Price is for"
-              placeholder="1 kg"
-              list="market-units"
+              placeholder="Type it: 1 congo, 1 kg…"
               value={unit}
               maxLength={30}
+              autoComplete="off"
               onChange={(e) => setUnit(e.target.value)}
             />
-            <datalist id="market-units">
-              {UNIT_SUGGESTIONS.map((u) => (
-                <option key={u} value={u} />
-              ))}
-            </datalist>
           </div>
+        </div>
+        <div className="-mt-1 flex flex-wrap gap-1.5">
+          {UNIT_SUGGESTIONS.map((u) => (
+            <button
+              key={u}
+              type="button"
+              onClick={() => setUnit(u)}
+              className={`rounded-full border px-2.5 py-1 text-[12px] font-semibold ${
+                unit.trim() === u ? 'border-brand bg-brand-soft text-brand' : 'border-line text-ink-soft'
+              }`}
+            >
+              {u}
+            </button>
+          ))}
         </div>
 
         <Select label="Section" value={section} onChange={(e) => setSection(e.target.value)}>
