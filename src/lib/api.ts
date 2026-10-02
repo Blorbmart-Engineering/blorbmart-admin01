@@ -673,6 +673,21 @@ export const adminApi = {
     unwrap<{ userId: string; signedOut: boolean }>(
       api.post(`/api/admin/users/${id}/password`, { password, reason }),
     ),
+  /**
+   * Customer or vendor. Becoming a customer parks the vendor profile and,
+   * unless closeStore is false, closes their store; becoming a vendor again
+   * restores the vendor status they had.
+   */
+  setUserRole: (id: string, role: 'buyer' | 'vendor', closeStore: boolean, reason?: string) =>
+    unwrap<{
+      userId: string
+      from: string
+      role: 'buyer' | 'vendor'
+      vendorProfile: string | null
+      storeClosed: boolean
+      storeName: string | null
+    }>(api.patch(`/api/admin/users/${id}/role`, { role, closeStore, reason })),
+
   /** Also moves the user's rider profile, store and menu, when they have them. */
   setUserCampus: (id: string, universityId: string, reason?: string) =>
     unwrap<{

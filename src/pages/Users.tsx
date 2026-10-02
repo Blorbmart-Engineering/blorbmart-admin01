@@ -37,6 +37,8 @@ export default function Users() {
   const [selected, setSelected] = useState<Row | null>(null)
   const [reason, setReason] = useState('')
   const [campusId, setCampusId] = useState('')
+  const [closeStore, setCloseStore] = useState(true)
+  const [confirmRole, setConfirmRole] = useState<'buyer' | 'vendor' | null>(null)
   const [password, setPassword] = useState('')
 
   const users = useQuery({
@@ -82,6 +84,20 @@ export default function Users() {
     onError: (error) => toast.error(errorMessage(error, 'Could not change the school.')),
   })
 
+  const changeRole = useMutation({
+    mutationFn: ({ id, role }: { id: string; role: 'buyer' | 'vendor' }) =>
+      adminApi.setUserRole(id, role, closeStore, reason || undefined),
+    onSuccess: (d) => {
+      const extra = d.role === 'buyer' && d.storeClosed ? ` and ${d.storeName ?? 'their store'} is closed` : ''
+      toast.success(`${d.role === 'buyer' ? 'Now a customer account' : 'Now a vendor account'}${extra}`)
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      setSelected((s) => (s ? { ...s, role: d.role } : s))
+      setConfirmRole(null)
+      setReason('')
+    },
+    onError: (error) => toast.error(errorMessage(error, 'Could not change the account type.')),
+  })
+
   const setUserPassword = useMutation({
     mutationFn: ({ id, password }: { id: string; password: string }) =>
       adminApi.setUserPassword(id, password, reason || undefined),
@@ -96,6 +112,9 @@ export default function Users() {
     setSelected(u)
     setCampusId(text(u.universityId, ''))
     setPassword('')
+    // A half-confirmed change must never carry over to the next person opened.
+    setConfirmRole(null)
+    setCloseStore(true)
   }
 
   const copyPassword = async () => {
@@ -297,6 +316,51 @@ export default function Users() {
             </div>
             {campuses.isError && (
               <p className="text-[12px] text-bad">{errorMessage(campuses.error, 'Could not load schools.')}</p>
+            )}
+
+            {/* Customer or vendor. Admins, heads of ops and riders are managed on their own pages. */}
+            {['buyer', 'vendor', 'kitchen', ''].includes(selectedRole) && (
+              <div className="rounded-lg border border-line-soft p-3">
+                <p className="text-[12px] font-bold uppercase tracking-wide text-ink-faint">Account type</p>
+                <p className="mt-1 text-[13px] text-ink-soft">
+                  {selectedRole === 'vendor' || selectedRole === 'kitchen'
+                    ? 'A vendor account. Making it a customer account turns off their vendor access; they keep their wallet and orders.'
+                    : 'A customer account. Only someone who signed up as a vendor before can be made a vendor again.'}
+                </p>
+                {confirmRole ? (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-[13px] font-semibold text-ink">
+                      {confirmRole === 'buyer'
+                        ? `Make ${text(selected.firstName, 'them')} a customer?`
+                        : `Make ${text(selected.firstName, 'them')} a vendor again?`}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" onClick={() => setConfirmRole(null)}>
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="primary"
+                        loading={changeRole.isPending}
+                        onClick={() => changeRole.mutate({ id: idOf(selected), role: confirmRole })}
+                      >
+                        Yes, change it
+                      </Button>
+                    </div>
+                  </div>
+                ) : selectedRole === 'vendor' || selectedRole === 'kitchen' ? (
+                  <div className="mt-3 space-y-2">
+                    <label className="flex items-center gap-2 text-[13px] text-ink-soft">
+                      <input type="checkbox" checked={closeStore} onChange={(e) => setCloseStore(e.target.checked)} />
+                      Also close their store, so customers stop seeing it
+                    </label>
+                    <Button onClick={() => setConfirmRole('buyer')}>Make a customer account</Button>
+                  </div>
+                ) : (
+                  <div className="mt-3">
+                    <Button onClick={() => setConfirmRole('vendor')}>Make a vendor account</Button>
+                  </div>
+                )}
+              </div>
             )}
 
             {passwordLocked ? (
