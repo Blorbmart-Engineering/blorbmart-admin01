@@ -32,7 +32,9 @@ export interface VerifiableRider {
   phone: string | null
   vehicleType: string | null
   plateNumber: string | null
-  verification: { status: VerificationStatus; reason: string | null; submittedAt: number | null }
+  verification: { status: VerificationStatus; reason: string | null; submittedAt: number | null; decidedByRole?: string | null }
+  /** The rider's Didit ID check, when they did one. */
+  kyc?: { status: string | null; name: string | null } | null
   documents: {
     idType?: string | null
     idNumber?: string | null
@@ -133,6 +135,13 @@ export default function RiderVerificationDialog({
           <Detail label="Vehicle">{[rider.vehicleType, rider.plateNumber].filter(Boolean).join(' · ') || '—'}</Detail>
           {rider.verification.submittedAt && <Detail label="Sent">{dateTime(rider.verification.submittedAt)}</Detail>}
           {rider.verification.reason && <Detail label="Last rejected">{rider.verification.reason}</Detail>}
+          {rider.kyc && (
+            <Detail label="Didit ID check">
+              {rider.kyc.status || 'Started'}
+              {rider.verification.decidedByRole === 'didit' ? ' · decided by Didit' : ''}
+            </Detail>
+          )}
+          {rider.kyc?.name && <Detail label="Name on ID">{rider.kyc.name}</Detail>}
         </div>
 
         {!complete ? (
