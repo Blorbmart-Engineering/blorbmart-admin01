@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import { Download, Search, Users as UsersIcon } from 'lucide-react'
@@ -20,6 +20,28 @@ import {
   type Column,
 } from '../components/ui'
 
+type Risk = { suspicious: boolean; reasons: string[]; facts: string[] }
+
+/** The backend's read on whether this account's details look made up. */
+function riskOf(u: Row): Risk {
+  const r = (u.risk ?? {}) as Partial<Risk>
+  return { suspicious: r.suspicious === true, reasons: r.reasons ?? [], facts: r.facts ?? [] }
+}
+
+/** Badges for the list: made-up details, a deleted sign-in, an unconfirmed email. */
+function AccountChecks({ user }: { user: Row }) {
+  const risk = riskOf(user)
+  const badges: ReactNode[] = []
+  if (risk.suspicious) {
+    badges.push(<span key="fake" title={risk.reasons.join('\n')}><Badge tone="bad">Looks fake</Badge></span>)
+  }
+  if (user.signInDeleted === true) badges.push(<Badge key="del" tone="neutral">Sign-in deleted</Badge>)
+  else if (user.emailConfirmed === false && text(user.role, 'buyer') === 'buyer') {
+    badges.push(<Badge key="email" tone="warn">Email not confirmed</Badge>)
+  }
+  return badges.length ? <div className="flex flex-wrap gap-1">{badges}</div> : <span className="text-ink-faint">—</span>
+}
+
 /**
  * Users.
  *
@@ -31,6 +53,7 @@ import {
 export default function Users() {
   const queryClient = useQueryClient()
   const [role, setRole] = useState('all')
+  const [show, setShow] = useState<'all' | 'flagged'>('all')
   const [q, setQ] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -42,8 +65,8 @@ export default function Users() {
   const [password, setPassword] = useState('')
 
   const users = useQuery({
-    queryKey: ['users', role, q, page],
-    queryFn: () => adminApi.users({ role, q, page, limit: 50 }),
+    queryKey: ['users', role, show, q, page],
+    queryFn: () => adminApi.users({ role, q, page, limit: 50, flagged: show === 'flagged' ? 'true' : undefined }),
     staleTime: 30_000,
   })
 
@@ -148,6 +171,7 @@ export default function Users() {
     { key: 'role', header: 'Role', render: (u) => <Badge tone={u.role === 'admin' ? 'info' : 'neutral'}>{titleCase(text(u.role, 'buyer'))}</Badge> },
     { key: 'campus', header: 'Campus', render: (u) => text(u.universityName ?? u.universityId, 'Not set') },
     { key: 'status', header: 'Status', render: (u) => <StatusBadge status={text(u.accountStatus, 'active')} /> },
+    { key: 'checks', header: 'Checks', render: (u) => <AccountChecks user={u} /> },
     { key: 'joined', header: 'Joined', align: 'right', render: (u) => ago(u.createdAt) },
   ]
 
@@ -189,6 +213,15 @@ export default function Users() {
               <option value="vendor">Vendor</option>
               <option value="rider">Rider</option>
               <option value="admin">Admin</option>
+            </Select>
+            <Select
+              label="Show"
+              value={show}
+              onChange={(e) => { setShow(e.target.value as 'all' | 'flagged'); setPage(1) }}
+              className="w-48"
+            >
+              <option value="all">Everyone</option>
+              <option value="flagged">Flagged or deleted</option>
             </Select>
             <form
               onSubmit={(e) => {
@@ -281,11 +314,30 @@ export default function Users() {
               <Detail label="Status">
                 <StatusBadge status={text(selected.accountStatus, 'active')} />
               </Detail>
-              <Detail label="Email verified">{selected.isEmailVerified ? 'Yes' : 'No'}</Detail>
+              <Detail label="Email verified">
+                {/* emailConfirmed comes from records the customer cannot edit;
+                    isEmailVerified is on their own profile, which they can. */}
+                {(typeof selected.emailConfirmed === 'boolean' ? selected.emailConfirmed : selected.isEmailVerified) ? 'Yes' : 'No'}
+              </Detail>
+              {selected.signInDeleted === true && (
+                <Detail label="Sign-in">Deleted. This person can no longer sign in.</Detail>
+              )}
               <Detail label="Joined">{ago(selected.createdAt)}</Detail>
               <Detail label="Last login">{ago(selected.lastLoginAt)}</Detail>
               <Detail label="User id">{text(pickId(selected))}</Detail>
             </div>
+
+            {riskOf(selected).suspicious && (
+              <div className="rounded-lg border border-bad/30 bg-bad/5 p-3">
+                <p className="text-[12.5px] font-semibold text-bad">These details look made up</p>
+                <ul className="mt-1 list-disc space-y-0.5 pl-4 text-[12.5px] text-ink-soft">
+                  {riskOf(selected).reasons.map((r) => <li key={r}>{r}</li>)}
+                </ul>
+                <p className="mt-2 text-[11.5px] text-ink-faint">
+                  A sign, not proof. Check their orders and payments before suspending.
+                </p>
+              </div>
+            )}
 
             <div className="flex items-end gap-2">
               <Select
