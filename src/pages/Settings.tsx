@@ -47,6 +47,7 @@ export default function Settings() {
   const [referralBonus, setReferralBonus] = useState('')
   const [referralLive, setReferralLive] = useState(false)
   const [billPaymentsEnabled, setBillPaymentsEnabled] = useState(true)
+  const [walletFundingEnabled, setWalletFundingEnabled] = useState(true)
 
   /** The stored fee table, with every category present. */
   const storedFees = ((settings.data as Row | undefined)?.billFees ?? {}) as Record<string, unknown>
@@ -70,6 +71,7 @@ export default function Settings() {
     setReferralBonus(String(data.buyerReferralRewardNaira ?? ''))
     setReferralLive(data.buyerReferralRewardsLive === true)
     setBillPaymentsEnabled(data.billPaymentsEnabled !== false)
+    setWalletFundingEnabled(data.walletFundingEnabled !== false)
   }, [settings.data])
 
   const save = useMutation({
@@ -105,6 +107,9 @@ export default function Settings() {
       if (billPaymentsEnabled !== (original.billPaymentsEnabled !== false)) {
         patch.billPaymentsEnabled = billPaymentsEnabled
       }
+      if (walletFundingEnabled !== (original.walletFundingEnabled !== false)) {
+        patch.walletFundingEnabled = walletFundingEnabled
+      }
       return adminApi.updateSettings(patch)
     },
     onSuccess: () => {
@@ -122,6 +127,7 @@ export default function Settings() {
     referralBonus !== String(original.buyerReferralRewardNaira ?? '') ||
     referralLive !== (original.buyerReferralRewardsLive === true)
     || billPaymentsEnabled !== (original.billPaymentsEnabled !== false)
+    || walletFundingEnabled !== (original.walletFundingEnabled !== false)
 
   const maxBonus = Number(original.maxBuyerReferralReward ?? 5000)
   const bonusValue = Number(referralBonus)
@@ -186,6 +192,38 @@ export default function Settings() {
                 {billPaymentsEnabled
                   ? 'Customers can buy bills. Uncheck this before the provider wallet needs funding.'
                   : 'New bill purchases are blocked before any wallet or card is charged.'}
+              </span>
+            </span>
+          </div>
+        </Card>
+
+        <Card title="Wallet funding" subtitle="Emergency control for new customer deposits">
+          <div className="flex items-start gap-3 rounded-lg border border-line bg-surface-sunk p-3">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={walletFundingEnabled}
+              aria-label="Toggle wallet funding"
+              disabled={settings.isLoading}
+              onClick={() => setWalletFundingEnabled((enabled) => !enabled)}
+              className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60 disabled:cursor-not-allowed disabled:opacity-60 ${
+                walletFundingEnabled ? 'bg-good' : 'bg-ink-faint'
+              }`}
+            >
+              <span
+                className={`block h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                  walletFundingEnabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+            <span>
+              <span className="block text-[13px] font-semibold text-ink">
+                {walletFundingEnabled ? 'Wallet funding enabled' : 'Wallet funding paused'}
+              </span>
+              <span className="block text-[12px] text-ink-faint">
+                {walletFundingEnabled
+                  ? 'Customers can fund by card or open a new transfer account.'
+                  : 'New card funding and new transfer accounts are blocked before money is accepted.'}
               </span>
             </span>
           </div>
