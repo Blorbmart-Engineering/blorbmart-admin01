@@ -46,6 +46,7 @@ export default function Settings() {
   const [notes, setNotes] = useState('')
   const [referralBonus, setReferralBonus] = useState('')
   const [referralLive, setReferralLive] = useState(false)
+  const [billPaymentsEnabled, setBillPaymentsEnabled] = useState(true)
 
   /** The stored fee table, with every category present. */
   const storedFees = ((settings.data as Row | undefined)?.billFees ?? {}) as Record<string, unknown>
@@ -68,6 +69,7 @@ export default function Settings() {
     setNotes(String(data.addressNotes ?? ''))
     setReferralBonus(String(data.buyerReferralRewardNaira ?? ''))
     setReferralLive(data.buyerReferralRewardsLive === true)
+    setBillPaymentsEnabled(data.billPaymentsEnabled !== false)
   }, [settings.data])
 
   const save = useMutation({
@@ -100,6 +102,9 @@ export default function Settings() {
       if (referralLive !== (original.buyerReferralRewardsLive === true)) {
         patch.buyerReferralRewardsLive = referralLive
       }
+      if (billPaymentsEnabled !== (original.billPaymentsEnabled !== false)) {
+        patch.billPaymentsEnabled = billPaymentsEnabled
+      }
       return adminApi.updateSettings(patch)
     },
     onSuccess: () => {
@@ -116,6 +121,7 @@ export default function Settings() {
     notes !== String(original.addressNotes ?? '') ||
     referralBonus !== String(original.buyerReferralRewardNaira ?? '') ||
     referralLive !== (original.buyerReferralRewardsLive === true)
+    || billPaymentsEnabled !== (original.billPaymentsEnabled !== false)
 
   const maxBonus = Number(original.maxBuyerReferralReward ?? 5000)
   const bonusValue = Number(referralBonus)
@@ -153,6 +159,38 @@ export default function Settings() {
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
+        <Card title="Bill payments" subtitle="Emergency control for airtime, data, power and TV purchases">
+          <div className="flex items-start gap-3 rounded-lg border border-line bg-surface-sunk p-3">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={billPaymentsEnabled}
+              aria-label="Toggle bill payments"
+              disabled={settings.isLoading}
+              onClick={() => setBillPaymentsEnabled((enabled) => !enabled)}
+              className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60 disabled:cursor-not-allowed disabled:opacity-60 ${
+                billPaymentsEnabled ? 'bg-good' : 'bg-ink-faint'
+              }`}
+            >
+              <span
+                className={`block h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                  billPaymentsEnabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+            <span>
+              <span className="block text-[13px] font-semibold text-ink">
+                {billPaymentsEnabled ? 'Bill payments enabled' : 'Bill payments paused'}
+              </span>
+              <span className="block text-[12px] text-ink-faint">
+                {billPaymentsEnabled
+                  ? 'Customers can buy bills. Uncheck this before the provider wallet needs funding.'
+                  : 'New bill purchases are blocked before any wallet or card is charged.'}
+              </span>
+            </span>
+          </div>
+        </Card>
+
         <Card title="Pricing" subtitle="Changes take effect on the next checkout">
           <div className="space-y-3.5">
             {FIELDS.map((field) => (
