@@ -1,11 +1,10 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import {
   Carrot,
   Clock,
   Crosshair,
-  ImagePlus,
   MapPin,
   Pencil,
   Plus,
@@ -24,7 +23,7 @@ import {
   type MarketSettingsInput,
 } from '../lib/api'
 import { ago, money } from '../lib/format'
-import { toCompressedDataUrl } from '../lib/image'
+import { PhotoPicker } from './PhotoPicker'
 import {
   Badge,
   Button,
@@ -359,74 +358,6 @@ function ProductCard({
           <Button size="sm" variant="ghost" icon={Pencil} onClick={onEdit} aria-label={`Edit ${p.name}`} />
           <Button size="sm" variant="ghost" icon={Trash2} onClick={onRemove} aria-label={`Remove ${p.name}`} />
         </div>
-      </div>
-    </div>
-  )
-}
-
-/* ─────────────────────────────── Photo picker ──────────────────────────── */
-
-function PhotoPicker({
-  current,
-  pending,
-  onPick,
-  onClear,
-  square = true,
-}: {
-  current: string
-  pending: string | null
-  onPick: (dataUrl: string) => void
-  onClear: () => void
-  square?: boolean
-}) {
-  const input = useRef<HTMLInputElement>(null)
-  const [preparing, setPreparing] = useState(false)
-  const shown = pending ?? current
-
-  return (
-    <div className="flex items-center gap-3">
-      <div
-        className={cn(
-          'shrink-0 overflow-hidden rounded-lg border border-line bg-surface-sunk',
-          square ? 'h-20 w-20' : 'h-20 w-40',
-        )}
-      >
-        {shown ? (
-          <img src={shown} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <div className="grid h-full w-full place-items-center text-ink-faint">
-            <ImagePlus className="h-6 w-6" aria-hidden />
-          </div>
-        )}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <input
-          ref={input}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={async (e) => {
-            const file = e.target.files?.[0]
-            e.target.value = ''
-            if (!file) return
-            setPreparing(true)
-            try {
-              onPick(await toCompressedDataUrl(file))
-            } catch (error) {
-              toast.error(error instanceof Error ? error.message : 'Could not use that image.')
-            } finally {
-              setPreparing(false)
-            }
-          }}
-        />
-        <Button size="sm" icon={ImagePlus} loading={preparing} onClick={() => input.current?.click()}>
-          {shown ? 'Change photo' : 'Add photo'}
-        </Button>
-        {shown && (
-          <Button size="sm" variant="ghost" onClick={onClear}>
-            Remove
-          </Button>
-        )}
       </div>
     </div>
   )

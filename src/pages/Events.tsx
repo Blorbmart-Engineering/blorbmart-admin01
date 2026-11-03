@@ -10,6 +10,8 @@ import {
   type EventTicket,
 } from '../lib/api'
 import { count, dateTime, money, text, titleCase } from '../lib/format'
+import { uploadImage } from '../lib/image'
+import { PhotoPicker } from '../components/PhotoPicker'
 import {
   Badge,
   Button,
@@ -209,10 +211,28 @@ export default function Events() {
   const closeEditor = () => {
     setEditing(null)
     setForm(null)
+    setCoverPreview(null)
   }
 
   const patch = (changes: Partial<FormState>) =>
     setForm((current) => (current ? { ...current, ...changes } : current))
+
+  // The cover goes straight to Cloudinary on pick, the way the organizer app
+  // uploads its covers, and only its URL is saved with the event.
+  const [coverPreview, setCoverPreview] = useState<string | null>(null)
+  const [uploadingCover, setUploadingCover] = useState(false)
+  const uploadCover = async (dataUrl: string) => {
+    setCoverPreview(dataUrl)
+    setUploadingCover(true)
+    try {
+      patch({ coverUrl: await uploadImage(dataUrl, 'events/covers') })
+    } catch (error) {
+      setCoverPreview(null)
+      toast.error(error instanceof Error ? error.message : 'Could not upload that image.')
+    } finally {
+      setUploadingCover(false)
+    }
+  }
 
   const patchTier = (index: number, changes: Partial<TierDraft>) =>
     setForm((current) =>
@@ -226,7 +246,7 @@ export default function Events() {
 
   const tiersValid = (form?.ticketTypes ?? []).some((t) => t.name.trim().length > 0)
   const canSave = Boolean(
-    form && form.title.trim().length >= 3 && form.startsAt && tiersValid && !save.isPending,
+    form && form.title.trim().length >= 3 && form.startsAt && tiersValid && !save.isPending && !uploadingCover,
   )
 
   const submit = () => {
@@ -439,12 +459,21 @@ export default function Events() {
                 className="w-56"
               />
             </Toolbar>
-            <Input
-              label="Cover image URL"
-              placeholder="https://…"
-              value={form.coverUrl}
-              onChange={(e) => patch({ coverUrl: e.target.value })}
-            />
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-ink-faint">Cover image</p>
+              <PhotoPicker
+                square={false}
+                maxSide={1600}
+                busy={uploadingCover}
+                current={form.coverUrl}
+                pending={coverPreview}
+                onPick={(dataUrl) => void uploadCover(dataUrl)}
+                onClear={() => {
+                  setCoverPreview(null)
+                  patch({ coverUrl: '' })
+                }}
+              />
+            </div>
             <Toolbar className="gap-3">
               <Input
                 label="Starts"
