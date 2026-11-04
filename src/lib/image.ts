@@ -39,6 +39,42 @@ export async function uploadImage(dataUrl: string, folder: string): Promise<stri
 }
 
 /**
+ * Uploads a file of any media type (a flyer, a promotional video) through the
+ * same unsigned preset, using Cloudinary's `auto` resource type. Whether the
+ * preset accepts video is set on Cloudinary; if it does not, its error is
+ * shown as is.
+ */
+export async function uploadMedia(file: File, folder: string): Promise<string> {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('upload_preset', PRESET)
+  form.append('folder', `blorbmart/${folder}`)
+
+  let res: Response
+  let body: { secure_url?: unknown; error?: { message?: unknown } } = {}
+  try {
+    res = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(CLOUD)}/auto/upload`, {
+      method: 'POST',
+      body: form,
+      credentials: 'omit',
+      signal: AbortSignal.timeout(300_000),
+    })
+    body = await res.json().catch(() => ({}))
+  } catch {
+    throw new Error('Could not reach the media service. Check your connection and try again.')
+  }
+  if (!res.ok) {
+    const reason = body.error?.message
+    throw new Error(`That upload failed: ${typeof reason === 'string' ? reason : `status ${res.status}`}`)
+  }
+  const url = body.secure_url
+  if (typeof url !== 'string' || !url.startsWith('https://res.cloudinary.com/')) {
+    throw new Error('That upload failed. Please try again.')
+  }
+  return url
+}
+
+/**
  * Shrinks a photo in the browser before it is sent. A phone photo is 3–8 MB;
  * the server resizes it anyway, and a smaller upload is the difference between
  * saving and timing out on campus data.

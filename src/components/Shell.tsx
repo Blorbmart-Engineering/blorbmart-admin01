@@ -2,6 +2,9 @@ import { useState, type ReactNode } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   Activity,
+  Film,
+  ClipboardCheck,
+  Star,
   BadgePercent,
   PiggyBank,
   Bike,
@@ -59,6 +62,7 @@ const GROUPS: { label: string; items: { to: string; label: string; icon: typeof 
       { to: '/orders', label: 'Orders', icon: ShoppingBag },
       { to: '/products', label: 'Products', icon: Package },
       { to: '/vendors', label: 'Vendors', icon: Building2 },
+      { to: '/vendor-readiness', label: 'Vendor readiness', icon: ClipboardCheck },
       { to: '/campuses', label: 'Campuses', icon: GraduationCap },
       { to: '/events', label: 'Events', icon: CalendarDays },
     ],
@@ -69,6 +73,7 @@ const GROUPS: { label: string; items: { to: string; label: string; icon: typeof 
       { to: '/users', label: 'Users', icon: Users },
       { to: '/riders', label: 'Riders', icon: Bike },
       { to: '/safety', label: 'Safety', icon: ShieldAlert },
+      { to: '/ratings', label: 'Ratings & feedback', icon: Star },
       { to: '/deliveries', label: 'Deliveries', icon: Truck },
       { to: '/careers', label: 'Careers', icon: Briefcase },
       { to: '/volunteers', label: 'Volunteers', icon: HandHeart },
@@ -79,6 +84,8 @@ const GROUPS: { label: string; items: { to: string; label: string; icon: typeof 
     items: [
       { to: '/profit', label: 'Platform profit', icon: PiggyBank },
       { to: '/wallets', label: 'Wallets & payouts', icon: Wallet },
+      { to: '/funding-alerts', label: 'Funding alerts', icon: ShieldAlert },
+      { to: '/customer-wallets', label: 'Customer wallets', icon: Wallet },
       { to: '/bills', label: 'Bill payments', icon: Receipt },
       { to: '/gift-cards', label: 'Gift cards', icon: Gift },
     ],
@@ -93,6 +100,7 @@ const GROUPS: { label: string; items: { to: string; label: string; icon: typeof 
       { to: '/landmarks', label: 'Delivery zones', icon: MapPin },
       { to: '/carousel', label: 'Carousel', icon: Images },
       { to: '/broadcast', label: 'Broadcast', icon: Megaphone },
+      { to: '/marketing', label: 'Marketing library', icon: Film },
       { to: '/popups', label: 'In-app pop-ups', icon: MonitorSmartphone },
       { to: '/settings', label: 'Platform settings', icon: Settings },
     ],

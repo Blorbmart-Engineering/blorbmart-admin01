@@ -20,6 +20,9 @@ const FIELDS: { key: string; label: string; hint: string; prefix?: string }[] = 
   { key: 'minOrderAmount', label: 'Minimum order', hint: 'Below this, checkout is blocked', prefix: '₦' },
   { key: 'commissionPercent', label: 'Commission', hint: 'Platform share of each order, in percent' },
   { key: 'riderSharePercent', label: 'Rider share', hint: 'Rider share of the delivery fee, in percent' },
+  // Never sent to the apps: the public settings endpoint strips both.
+  { key: 'fundingAlertThreshold', label: 'Funding alert: one top-up', hint: 'A single top-up above this goes to Funding alerts', prefix: '₦' },
+  { key: 'fundingAlertDailyTotal', label: 'Funding alert: one day', hint: 'A customer topping up more than this in 24 hours goes to Funding alerts', prefix: '₦' },
 ]
 
 /**
@@ -370,7 +373,123 @@ export default function Settings() {
             </p>
           </div>
         </Card>
+
+        <AppUpdateCard settings={(settings.data ?? null) as Row | null} />
+        <EngagementCard settings={(settings.data ?? null) as Row | null} />
       </div>
     </>
+  )
+}
+
+/**
+ * The customer Android app's release policy, read by the app from
+ * /api/settings. Build numbers are the versionCode (the number after "+" in
+ * the app's pubspec, e.g. 16 for 1.0.13+16).
+ */
+function AppUpdateCard({ settings }: { settings: Row | null }) {
+  const queryClient = useQueryClient()
+  const current = ((settings?.appUpdate as Row | undefined)?.android ?? {}) as Row
+  const [latest, setLatest] = useState('')
+  const [min, setMin] = useState('')
+  const [message, setMessage] = useState('')
+
+  useEffect(() => {
+    setLatest(current.latestBuild == null ? '' : String(current.latestBuild))
+    setMin(current.minSupportedBuild == null ? '' : String(current.minSupportedBuild))
+    setMessage(String(current.message ?? ''))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings])
+
+  const save = useMutation({
+    mutationFn: () =>
+      adminApi.updateSettings({
+        appUpdate: { android: { latestBuild: Number(latest), minSupportedBuild: Number(min || 0), message } },
+      }),
+    onSuccess: () => {
+      toast.success('Release policy saved')
+      queryClient.invalidateQueries({ queryKey: ['settings'] })
+    },
+    onError: (error) => toast.error(errorMessage(error, 'Could not save the release policy.')),
+  })
+
+  return (
+    <Card title="App updates" subtitle="Ask customers on old Android builds to update from the Play Store">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Input label="Latest build" inputMode="numeric" placeholder="e.g. 16" value={latest} onChange={(e) => setLatest(e.target.value)} />
+        <Input label="Oldest build allowed" inputMode="numeric" placeholder="0 = none" value={min} onChange={(e) => setMin(e.target.value)} />
+      </div>
+      <div className="mt-3">
+        <Input label="Message (optional)" placeholder="What is new, in one line" value={message} onChange={(e) => setMessage(e.target.value)} />
+      </div>
+      <p className="mt-3 text-[12px] leading-relaxed text-ink-soft">
+        Builds below <b>Latest</b> are told once that an update is ready. Builds below <b>Oldest allowed</b> cannot be
+        used until updated. Only raise it after the new build is live on the Play Store, or customers will be sent to
+        an update they cannot get yet.
+      </p>
+      <div className="mt-3">
+        <Button variant="primary" size="sm" loading={save.isPending} disabled={!latest} onClick={() => save.mutate()}>
+          Save release policy
+        </Button>
+      </div>
+    </Card>
+  )
+}
+
+const NUDGE_LABEL: Record<string, string> = {
+  checkout_abandoned: 'Left checkout',
+  cart_abandoned: 'Left a basket',
+  browsed: 'Browsed a store',
+  inactive: 'Inactive a week',
+}
+
+/**
+ * Reminder nudges to customers (backend engagementService). Off until an
+ * admin turns them on here, because these are messages to real customers.
+ */
+function EngagementCard({ settings }: { settings: Row | null }) {
+  const queryClient = useQueryClient()
+  const stats = useQuery({ queryKey: ['engagement-stats'], queryFn: () => adminApi.engagementStats(30), staleTime: 60_000 })
+  const enabled = settings?.engagementNudgesEnabled === true
+
+  const save = useMutation({
+    mutationFn: (next: boolean) => adminApi.updateSettings({ engagementNudgesEnabled: next }),
+    onSuccess: (_d, next) => {
+      toast.success(next ? 'Reminders are on' : 'Reminders are off')
+      queryClient.invalidateQueries({ queryKey: ['settings'] })
+      queryClient.invalidateQueries({ queryKey: ['engagement-stats'] })
+    },
+    onError: (error) => toast.error(errorMessage(error, 'Could not save.')),
+  })
+
+  return (
+    <Card title="Reminder nudges" subtitle="Pushes to customers who left a basket, a checkout, or the app">
+      <p className="text-[12.5px] leading-relaxed text-ink-soft">
+        At most one every 48 hours and three a week per customer, only between 9am and 9pm, never after they have
+        ordered, and never to anyone who switched reminders off in their account.
+      </p>
+      <div className="mt-3 flex items-center gap-3">
+        <Button
+          variant={enabled ? 'danger' : 'primary'}
+          size="sm"
+          loading={save.isPending}
+          onClick={() => save.mutate(!enabled)}
+        >
+          {enabled ? 'Turn reminders off' : 'Turn reminders on'}
+        </Button>
+        <span className="text-[12.5px] font-semibold">{enabled ? 'On' : 'Off'}</span>
+      </div>
+      {stats.data && (
+        <div className="mt-4">
+          <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-ink-faint">Last 30 days</p>
+          {stats.data.byKind.length === 0 && <p className="text-[12.5px] text-ink-soft">Nothing sent yet.</p>}
+          {stats.data.byKind.map((k) => (
+            <p key={k.kind} className="text-[12.5px]">
+              {`${NUDGE_LABEL[k.kind] ?? k.kind}: ${k.sent} sent, ${k.delivered} reached a phone, ${k.opened} opened`}
+            </p>
+          ))}
+          <p className="mt-1 text-[12px] text-ink-faint">{`${stats.data.optedOut} customer(s) have reminders off.`}</p>
+        </div>
+      )}
+    </Card>
   )
 }

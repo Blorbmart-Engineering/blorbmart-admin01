@@ -31,6 +31,11 @@ const Riders = lazy(() => import('./pages/Riders'))
 const Safety = lazy(() => import('./pages/Safety'))
 const Deliveries = lazy(() => import('./pages/Deliveries'))
 const Wallets = lazy(() => import('./pages/Wallets'))
+const FundingAlerts = lazy(() => import('./pages/FundingAlerts'))
+const CustomerWallets = lazy(() => import('./pages/CustomerWallets'))
+const Ratings = lazy(() => import('./pages/Ratings'))
+const VendorReadiness = lazy(() => import('./pages/VendorReadiness'))
+const MarketingLibrary = lazy(() => import('./pages/MarketingLibrary'))
 const Bills = lazy(() => import('./pages/Bills'))
 const Promos = lazy(() => import('./pages/Promos'))
 const Landmarks = lazy(() => import('./pages/Landmarks'))
@@ -193,6 +198,11 @@ export default function App() {
                 ['/careers', <Careers key="cj" />],
                 ['/volunteers', <Volunteers key="vl" />],
                 ['/wallets', <Wallets key="w" />],
+                ['/funding-alerts', <FundingAlerts key="fa" />],
+                ['/customer-wallets', <CustomerWallets key="cw" />],
+                ['/ratings', <Ratings key="rt" />],
+                ['/vendor-readiness', <VendorReadiness key="vr" />],
+                ['/marketing', <MarketingLibrary key="mk" />],
                 ['/bills', <Bills key="b" />],
                 ['/gift-cards', <GiftCards key="gc" />],
                 ['/promos', <Promos key="pr" />],

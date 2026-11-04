@@ -501,8 +501,224 @@ export interface GiftCardSummary {
   outstandingValue: number
 }
 
+/* Funding alerts and wallet corrections (routes/adminFinance.js) */
+
+export type FundingAlertStatus = 'open' | 'cleared' | 'suspicious' | 'escalated'
+
+export interface FundingAlert {
+  id: string
+  kind: 'large_funding' | 'daily_total'
+  status: FundingAlertStatus
+  userId: string
+  customer: {
+    name?: string | null
+    email?: string | null
+    phone?: string | null
+    campus?: string | null
+    accountCreatedAt?: number | null
+    riskReasons?: string[]
+  }
+  reference: string
+  references?: string[] | null
+  amount: number
+  threshold: number
+  channel: string
+  verification: { paystackVerified?: boolean; ledgerStatus?: string }
+  dayTotal: number
+  dayCount: number
+  reasons: string[]
+  fundedAt: number | null
+  createdAt: number | null
+  reviewedAt: number | null
+  reviewedBy: string | null
+  lastDecision?: { decision: string; note: string } | null
+}
+
+export interface LedgerRow {
+  id: string
+  type: string
+  status: string
+  amount: number
+  previousBalance?: number | null
+  newBalance?: number | null
+  reference: string | null
+  paymentMethod?: string | null
+  description: string | null
+  createdAt: number | null
+}
+
+export interface FundingAlertDetail {
+  alert: FundingAlert
+  reviews: { id: string; decision: string; note: string; previousStatus: string; adminEmail?: string | null; adminUid: string; createdAt: number | null }[]
+  wallet: { balance: number; heldBalance: number }
+  transactions: LedgerRow[]
+  otherAlerts: FundingAlert[]
+}
+
+export interface WalletAdjustment {
+  id: string
+  userId: string
+  direction: 'credit' | 'debit'
+  amount: number
+  previousBalance: number
+  newBalance: number
+  reason: string
+  adminUid: string
+  adminEmail: string | null
+  createdAt: number | null
+  repeat?: boolean
+}
+
+export interface CustomerWallet {
+  userId: string
+  name: string | null
+  email: string | null
+  phone: string | null
+  balance: number
+  heldBalance: number
+  ledgerCheck: { lastRecordedBalance: number | null; matches: boolean | null; reference: string | null }
+  transactions: LedgerRow[]
+  adjustments: WalletAdjustment[]
+  maxAdjustment: number
+}
+
+/* Ratings (routes/adminRatings.js) */
+
+export interface RatingSummaryRow {
+  id: string
+  name?: string
+  count: number
+  average: number
+  low: number
+}
+
+export interface RatingReport {
+  kind: 'store' | 'rider'
+  id: string
+  days: number
+  count: number
+  average: number | null
+  distribution: Record<string, number>
+  positive: number
+  negative: number
+  compliments: { tag: string; count: number }[]
+  complaints: { tag: string; count: number }[]
+  trend: { week: string; count: number; average: number }[]
+  comments: {
+    stars: number
+    comment: string
+    visibility?: string
+    orderId?: string
+    userId?: string
+    createdAt?: number | null
+  }[]
+}
+
+export interface HeldReview {
+  id: string
+  orderId: string
+  storeName: string | null
+  food: number
+  comment: string | null
+  moderation: { status: string; reasons?: string[] }
+  createdAt: number | null
+}
+
+/* Vendor readiness and marketing library (routes/adminGrowth.js) */
+
+export interface ReadinessRow {
+  storeId: string
+  vendorId: string | null
+  name: string
+  vertical: string | null
+  campus: string | null
+  phone: string | null
+  email: string | null
+  createdAt: number | null
+  lastContactAt: number | null
+  ready: boolean
+  score: number
+  missing: { key: string; label: string; blocking: boolean }[]
+  products: { total: number; available: number; withImages: number }
+}
+
+export interface MarketingAsset {
+  id: string
+  title: string
+  category: string
+  kind: string
+  status: string
+  campaign: string | null
+  mediaUrl: string | null
+  caption: string | null
+  hashtags: string[]
+  startDate: string | null
+  endDate: string | null
+  notes: string | null
+  createdAt: number | null
+}
+
 export const adminApi = {
   me: () => unwrap<AdminIdentity>(api.get('/api/admin/me')),
+
+  vendorReadiness: (fresh = false) =>
+    unwrap<{ generatedAt: number; total: number; ready: number; stores: ReadinessRow[] }>(
+      api.get('/api/admin/vendor-readiness', { params: fresh ? { fresh: '1' } : {} }),
+    ),
+  vendorContacts: (storeId: string) =>
+    unwrap<{ id: string; channel: string; note: string; adminUid: string; createdAt: number | null }[]>(
+      api.get(`/api/admin/vendor-readiness/${encodeURIComponent(storeId)}/contacts`),
+    ),
+  recordVendorContact: (storeId: string, channel: string, note: string) =>
+    unwrap<{ id: string }>(api.post(`/api/admin/vendor-readiness/${encodeURIComponent(storeId)}/contacts`, { channel, note })),
+  marketingOptions: () =>
+    unwrap<{ categories: string[]; kinds: string[]; statuses: string[] }>(api.get('/api/admin/marketing-library/options')),
+  marketingLibrary: (params: { category?: string; status?: string } = {}) =>
+    unwrap<MarketingAsset[]>(api.get('/api/admin/marketing-library', { params })),
+  createMarketingAsset: (body: Row) => unwrap<MarketingAsset>(api.post('/api/admin/marketing-library', body)),
+  updateMarketingAsset: (id: string, body: Row) =>
+    unwrap<MarketingAsset>(api.patch(`/api/admin/marketing-library/${encodeURIComponent(id)}`, body)),
+  archiveMarketingAsset: (id: string) =>
+    unwrap<MarketingAsset>(api.post(`/api/admin/marketing-library/${encodeURIComponent(id)}/archive`)),
+
+  engagementStats: (days = 30) =>
+    unwrap<{
+      enabled: boolean
+      customers: number
+      optedOut: number
+      byKind: { kind: string; sent: number; delivered: number; opened: number }[]
+    }>(api.get('/api/admin/engagement/stats', { params: { days } })),
+  ratingOverview: (days = 30) =>
+    unwrap<{ days: number; pendingReviews: number; stores: RatingSummaryRow[]; riders: RatingSummaryRow[] }>(
+      api.get('/api/admin/ratings/overview', { params: { days } }),
+    ),
+  ratingReport: (kind: 'store' | 'rider', id: string, days = 30) =>
+    unwrap<RatingReport>(api.get(`/api/admin/ratings/report/${kind}/${encodeURIComponent(id)}`, { params: { days } })),
+  heldReviews: (status = 'pending') =>
+    unwrap<HeldReview[]>(api.get('/api/admin/ratings/moderation', { params: { status } })),
+  moderateReview: (id: string, decision: 'approved' | 'hidden', reason?: string) =>
+    unwrap<{ id: string; status: string }>(
+      api.post(`/api/admin/ratings/${encodeURIComponent(id)}/moderate`, { decision, reason }),
+    ),
+
+  fundingAlerts: (status: string) =>
+    unwrap<{ alerts: FundingAlert[]; thresholds: { single: number; daily: number } }>(
+      api.get('/api/admin/funding-alerts', { params: { status } }),
+    ),
+  fundingAlertCount: () => unwrap<{ open: number }>(api.get('/api/admin/funding-alerts/count')),
+  fundingAlert: (id: string) => unwrap<FundingAlertDetail>(api.get(`/api/admin/funding-alerts/${encodeURIComponent(id)}`)),
+  reviewFundingAlert: (id: string, decision: string, note: string) =>
+    unwrap<FundingAlertDetail>(api.post(`/api/admin/funding-alerts/${encodeURIComponent(id)}/review`, { decision, note })),
+  scanFundingAlerts: (days = 7) =>
+    unwrap<{ checked: number; raised: number }>(api.post('/api/admin/funding-alerts/scan', { days })),
+  walletAdjustPermission: () =>
+    unwrap<{ canAdjust: boolean; maxAdjustment: number }>(api.get('/api/admin/customer-wallets/permission')),
+  customerWallet: (userId: string) =>
+    unwrap<CustomerWallet>(api.get(`/api/admin/customer-wallets/${encodeURIComponent(userId)}`)),
+  adjustCustomerWallet: (
+    userId: string,
+    body: { direction: 'credit' | 'debit'; amount: number; reason: string; requestId: string; expectedBalance: number },
+  ) => unwrap<WalletAdjustment>(api.post(`/api/admin/customer-wallets/${encodeURIComponent(userId)}/adjust`, body)),
 
   /* Oversight (routes/adminOversight.js) */
   overview: () => unwrap<Overview>(api.get('/api/admin/overview')),
