@@ -1525,9 +1525,21 @@ export interface ModerationOrder {
   buyer: { name: string; phone?: string | null }
   seller: { name: string; phone?: string | null }
   meetupNote: string | null
+  meetup?: { place: string; time: string | null } | null
   dispute: { reason: string; by: string; openedAt: string | null; resolution: unknown } | null
+  chat?: { count: number; lastAt: string | null }
   createdAt: string | null
   acceptedAt: string | null
+}
+
+/** One line of a sale's buyer–seller chat, as the campus team reads it. */
+export interface MarketChatMessage {
+  id: string
+  from: 'buyer' | 'seller' | 'system'
+  kind: 'text' | 'system' | 'proposal'
+  text: string | null
+  proposal?: { place: string; time: string | null; status: string }
+  at: string | null
 }
 
 export type SellerStatus = 'unverified' | 'pending' | 'verified' | 'rejected' | 'suspended'
@@ -1565,6 +1577,8 @@ export function marketplaceApi(campusId?: string) {
     queue: () => unwrap<ModerationQueue>(api.get(base)),
     moderate: (id: string, action: 'hide' | 'restore' | 'dismiss', reason?: string) =>
       unwrap<ModerationListing>(api.post(`${base}/listings/${encodeURIComponent(id)}`, { action, reason })),
+    messages: (id: string) =>
+      unwrap<{ messages: MarketChatMessage[]; order: ModerationOrder }>(api.get(`${base}/orders/${encodeURIComponent(id)}/messages`)),
     resolve: (id: string, outcome: 'refund' | 'release', note?: string) =>
       unwrap<ModerationOrder>(api.post(`${base}/orders/${encodeURIComponent(id)}/resolve`, { outcome, note })),
     sellers: (status: SellerStatus) => unwrap<MarketSeller[]>(api.get(`${base}/sellers`, { params: { status } })),

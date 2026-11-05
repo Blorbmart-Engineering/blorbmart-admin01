@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { Ban, CheckCircle2, Clock, Eye, Flag, Phone, RefreshCw, RotateCcw, Scale, Undo2 } from 'lucide-react'
-import { errorMessage, marketplaceApi, type ModerationListing, type ModerationOrder } from '../lib/api'
+import { Ban, CheckCircle2, Clock, Eye, Flag, MessagesSquare, Phone, RefreshCw, RotateCcw, Scale, Undo2 } from 'lucide-react'
+import { errorMessage, marketplaceApi, type MarketChatMessage, type ModerationListing, type ModerationOrder } from '../lib/api'
 import { ago, money } from '../lib/format'
 import { Badge, Button, Card, Empty, ErrorState, Modal, PageHeader, Skeleton, Stat, Textarea } from './ui'
 import MarketplaceSellers from './MarketplaceSellers'
@@ -26,6 +26,7 @@ export default function MarketplaceModeration({ campusId }: { campusId?: string 
   const queryKey = ['marketplace-queue', campusId ?? 'mine']
   const [deciding, setDeciding] = useState<{ order: ModerationOrder; outcome: 'refund' | 'release' } | null>(null)
   const [hiding, setHiding] = useState<ModerationListing | null>(null)
+  const [reading, setReading] = useState<ModerationOrder | null>(null)
   const [note, setNote] = useState('')
 
   const queue = useQuery({ queryKey, queryFn: api.queue, refetchInterval: 60_000 })
@@ -89,6 +90,11 @@ export default function MarketplaceModeration({ campusId }: { campusId?: string 
               <div className="space-y-3">
                 {data.disputes.map((o) => (
                   <OrderRow key={o.id} order={o}>
+                    {(o.chat?.count ?? 0) > 0 && (
+                      <Button size="sm" variant="ghost" icon={MessagesSquare} onClick={() => setReading(o)}>
+                        Read their chat ({o.chat?.count})
+                      </Button>
+                    )}
                     <Button size="sm" variant="danger" icon={Undo2} onClick={() => setDeciding({ order: o, outcome: 'refund' })}>
                       Refund buyer
                     </Button>
@@ -137,6 +143,11 @@ export default function MarketplaceModeration({ campusId }: { campusId?: string 
               <div className="space-y-3">
                 {data!.stale.map((o) => (
                   <OrderRow key={o.id} order={o}>
+                    {(o.chat?.count ?? 0) > 0 && (
+                      <Button size="sm" variant="ghost" icon={MessagesSquare} onClick={() => setReading(o)}>
+                        Read their chat ({o.chat?.count})
+                      </Button>
+                    )}
                     <Button size="sm" variant="danger" icon={Undo2} onClick={() => setDeciding({ order: o, outcome: 'refund' })}>
                       Refund buyer
                     </Button>
@@ -183,6 +194,10 @@ export default function MarketplaceModeration({ campusId }: { campusId?: string 
         )}
       </Modal>
 
+      <Modal open={Boolean(reading)} onClose={() => setReading(null)} title={reading ? `Chat: ${reading.listing.title}` : 'Chat'}>
+        {reading && <ChatLog order={reading} load={() => api.messages(reading.id)} />}
+      </Modal>
+
       <Modal
         open={Boolean(hiding)}
         onClose={() => setHiding(null)}
@@ -201,6 +216,37 @@ export default function MarketplaceModeration({ campusId }: { campusId?: string 
         <Textarea label="Reason the seller will see" value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="e.g. Exam papers cannot be sold on Blorbmart" />
       </Modal>
     </>
+  )
+}
+
+/** The buyer and seller's chat, read-only: evidence when settling a dispute. */
+function ChatLog({ order, load }: { order: ModerationOrder; load: () => Promise<{ messages: MarketChatMessage[] }> }) {
+  const chat = useQuery({ queryKey: ['marketplace-chat', order.id], queryFn: load })
+  if (chat.isLoading) return <Skeleton className="h-40" />
+  if (chat.isError) return <ErrorState message={errorMessage(chat.error, 'Could not load the chat.')} onRetry={() => chat.refetch()} />
+  const messages = chat.data?.messages ?? []
+  if (!messages.length) return <p className="text-[13px] text-ink-soft">They have not written anything.</p>
+  const who = (from: string) => (from === 'buyer' ? `${order.buyer.name} (buyer)` : from === 'seller' ? `${order.seller.name} (seller)` : 'Blorbmart')
+  return (
+    <ol className="max-h-[60vh] space-y-2 overflow-y-auto text-[13px]">
+      {messages.map((m) => (
+        <li key={m.id} className={m.from === 'system' ? 'text-center text-[12px] text-ink-faint' : ''}>
+          {m.from !== 'system' && (
+            <div className="text-[11.5px] text-ink-faint">
+              <span className="font-semibold text-ink-soft">{who(m.from)}</span> · {m.at ? new Date(m.at).toLocaleString('en-NG') : ''}
+            </div>
+          )}
+          {m.kind === 'proposal' && m.proposal ? (
+            <div className="text-ink">
+              Suggested meet-up: {m.proposal.place}
+              {m.proposal.time ? ` at ${new Date(m.proposal.time).toLocaleString('en-NG')}` : ''} <span className="text-ink-faint">({m.proposal.status})</span>
+            </div>
+          ) : (
+            <div className={m.from === 'system' ? '' : 'whitespace-pre-wrap text-ink'}>{m.text}</div>
+          )}
+        </li>
+      ))}
+    </ol>
   )
 }
 
