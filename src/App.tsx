@@ -6,7 +6,7 @@ import { SessionProvider, useSession } from './contexts/SessionContext'
 import Shell from './components/Shell'
 import CampusShell from './components/CampusShell'
 import { Skeleton } from './components/ui'
-import { BrandMarkDraw, useMarkStillDrawing } from './components/Brand'
+import { BrandMarkDraw } from './components/Brand'
 import Login from './pages/Login'
 
 /*
@@ -113,9 +113,8 @@ function Splash() {
  */
 function Guarded({ children }: { children: ReactNode }) {
   const { user, identity, role, loading } = useSession()
-  const drawing = useMarkStillDrawing()
 
-  if (loading || drawing) return <Splash />
+  if (loading) return <Splash />
   if (role === 'head_of_ops') return <Navigate to="/campus" replace />
   if (!user || role !== 'admin' || !identity?.admin) return <Login />
 
@@ -137,9 +136,8 @@ function Guarded({ children }: { children: ReactNode }) {
  */
 function CampusGuarded({ children }: { children: ReactNode }) {
   const { user, campus, role, loading } = useSession()
-  const drawing = useMarkStillDrawing()
 
-  if (loading || drawing) return <Splash />
+  if (loading) return <Splash />
   if (role === 'admin') return <Navigate to="/" replace />
   if (!user || role !== 'head_of_ops') return <Login />
 
@@ -167,8 +165,7 @@ function CampusGuarded({ children }: { children: ReactNode }) {
  */
 function RoleHome() {
   const { role, loading } = useSession()
-  const drawing = useMarkStillDrawing()
-  if (loading || drawing) return <Splash />
+  if (loading) return <Splash />
   if (role === 'head_of_ops') return <Navigate to="/campus" replace />
   return <Navigate to="/" replace />
 }
