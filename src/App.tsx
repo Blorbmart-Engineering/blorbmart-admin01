@@ -43,6 +43,7 @@ const Carousel = lazy(() => import('./pages/Carousel'))
 const Events = lazy(() => import('./pages/Events'))
 const Broadcast = lazy(() => import('./pages/Broadcast'))
 const Announcements = lazy(() => import('./pages/Announcements'))
+const Seasons = lazy(() => import('./pages/Seasons'))
 const Careers = lazy(() => import('./pages/Careers'))
 const Volunteers = lazy(() => import('./pages/Volunteers'))
 const GiftCards = lazy(() => import('./pages/GiftCards'))
@@ -210,6 +211,7 @@ export default function App() {
                 ['/carousel', <Carousel key="ca" />],
                 ['/broadcast', <Broadcast key="br" />],
                 ['/popups', <Announcements key="pu" />],
+                ['/seasons', <Seasons key="se" />],
                 ['/commissions', <Commissions key="cm" />],
                 ['/profit', <Profit key="pf" />],
                 ['/settings', <Settings key="s" />],

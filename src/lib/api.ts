@@ -1338,6 +1338,28 @@ export interface AnnouncementInput {
 
 export type NotifyResult = { push?: { sentCount?: number; error?: string }; inApp?: { sentCount?: number; error?: string } }
 
+/* ───────────────────────── Seasonal app icons ───────────────────────── */
+
+export type SeasonApp = 'buyer' | 'vendor' | 'rider'
+
+export interface AppSeason {
+  id: string
+  season: string
+  label: string
+  apps: SeasonApp[]
+  startsAt: string | null
+  endsAt: string | null
+  state: 'scheduled' | 'live' | 'ended'
+  createdAt: string | null
+}
+
+export const seasonsApi = {
+  list: () => unwrap<{ seasons: AppSeason[]; options: Record<string, string>; apps: SeasonApp[] }>(api.get('/api/admin/seasons')),
+  create: (body: { season: string; apps: SeasonApp[]; startsAt: string; endsAt: string }) =>
+    unwrap<AppSeason>(api.post('/api/admin/seasons', body)),
+  remove: (id: string) => unwrap<{ id: string }>(api.delete(`/api/admin/seasons/${encodeURIComponent(id)}`)),
+}
+
 export const announcementsApi = {
   list: () => unwrap<{ announcements: Announcement[] }>(api.get('/api/admin/announcements')),
   create: (body: AnnouncementInput) =>

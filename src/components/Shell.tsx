@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   Activity,
+  Sparkles,
   Film,
   ClipboardCheck,
   Star,
@@ -102,6 +103,7 @@ const GROUPS: { label: string; items: { to: string; label: string; icon: typeof 
       { to: '/broadcast', label: 'Broadcast', icon: Megaphone },
       { to: '/marketing', label: 'Marketing library', icon: Film },
       { to: '/popups', label: 'In-app pop-ups', icon: MonitorSmartphone },
+      { to: '/seasons', label: 'Seasonal icons', icon: Sparkles },
       { to: '/settings', label: 'Platform settings', icon: Settings },
     ],
   },
