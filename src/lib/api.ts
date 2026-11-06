@@ -658,6 +658,33 @@ export interface MarketingAsset {
   createdAt: number | null
 }
 
+export interface RestaurantMenuItem extends Row {
+  id: string
+  name: string
+  description?: string | null
+  price: number
+  discountPrice?: number
+  section?: string | null
+  images: string[]
+  imageUrl?: string | null
+  imageSource?: 'restaurant' | 'platform' | string
+  imageAssetId?: string | null
+  isAvailable?: boolean
+  status?: string
+}
+
+export interface RestaurantMenu {
+  store: Row & { id: string }
+  items: RestaurantMenuItem[]
+}
+
+export interface FallbackMenuImage {
+  id: string
+  title: string
+  category: string
+  url: string
+}
+
 export const adminApi = {
   me: () => unwrap<AdminIdentity>(api.get('/api/admin/me')),
 
@@ -926,6 +953,19 @@ export const adminApi = {
     unwrap<{ count: number; products: Row[]; pagination: Paged<Row>['pagination'] }>(
       api.get('/api/admin/products', { params: clean(params) }),
     ),
+
+  restaurantMenuRestaurants: (q = '') =>
+    unwrap<Row[]>(api.get('/api/admin/restaurant-menus/restaurants', { params: q ? { q } : {} })),
+  restaurantMenu: (storeId: string) =>
+    unwrap<RestaurantMenu>(api.get(`/api/admin/restaurant-menus/${encodeURIComponent(storeId)}`)),
+  fallbackMenuImages: () =>
+    unwrap<FallbackMenuImage[]>(api.get('/api/admin/restaurant-menus/fallback-images')),
+  createRestaurantMenuItem: (storeId: string, body: Row) =>
+    unwrap<RestaurantMenuItem>(api.post(`/api/admin/restaurant-menus/${encodeURIComponent(storeId)}/items`, body)),
+  updateRestaurantMenuItem: (storeId: string, id: string, body: Row) =>
+    unwrap<RestaurantMenuItem>(api.patch(`/api/admin/restaurant-menus/${encodeURIComponent(storeId)}/items/${encodeURIComponent(id)}`, body)),
+  deleteRestaurantMenuItem: (storeId: string, id: string) =>
+    unwrap<{ id: string }>(api.delete(`/api/admin/restaurant-menus/${encodeURIComponent(storeId)}/items/${encodeURIComponent(id)}`)),
 
   activity: (params: Q = {}) =>
     unwrap<{ count: number; activity: Row[]; pagination: Paged<Row>['pagination'] }>(

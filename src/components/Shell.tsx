@@ -24,6 +24,7 @@ import {
   MonitorSmartphone,
   Menu,
   Package,
+  Utensils,
   Receipt,
   Settings,
   ShieldAlert,
@@ -62,6 +63,7 @@ const GROUPS: { label: string; items: { to: string; label: string; icon: typeof 
     items: [
       { to: '/orders', label: 'Orders', icon: ShoppingBag },
       { to: '/products', label: 'Products', icon: Package },
+      { to: '/restaurant-menus', label: 'Restaurant menus', icon: Utensils },
       { to: '/vendors', label: 'Vendors', icon: Building2 },
       { to: '/vendor-readiness', label: 'Vendor readiness', icon: ClipboardCheck },
       { to: '/campuses', label: 'Campuses', icon: GraduationCap },
