@@ -40,12 +40,25 @@ const BILL_FEES: { key: string; label: string; hint: string }[] = [
   { key: 'education', label: 'Education', hint: 'WAEC and JAMB PINs' },
 ]
 
+/**
+ * Block fees for large bills: `fee` naira for every started `every` naira,
+ * added on top of the flat fee above. ₦100 per ₦5,000 means a ₦5,000 token
+ * pays ₦100 and a ₦12,000 one ₦300. A fee of 0 switches the block fee off.
+ */
+const BLOCK_FEES: { key: string; label: string }[] = [
+  { key: 'electricity', label: 'Electricity' },
+  { key: 'tv', label: 'Cable TV' },
+  { key: 'education', label: 'Education' },
+]
+type Block = { every: string; fee: string }
+
 export default function Settings() {
   const queryClient = useQueryClient()
   const settings = useQuery({ queryKey: ['settings'], queryFn: adminApi.settings, staleTime: 60_000 })
 
   const [draft, setDraft] = useState<Record<string, string>>({})
   const [fees, setFees] = useState<Record<string, string>>({})
+  const [blocks, setBlocks] = useState<Record<string, Block>>({})
   const [notes, setNotes] = useState('')
   const [referralBonus, setReferralBonus] = useState('')
   const [referralLive, setReferralLive] = useState(false)
@@ -55,6 +68,13 @@ export default function Settings() {
   /** The stored fee table, with every category present. */
   const storedFees = ((settings.data as Row | undefined)?.billFees ?? {}) as Record<string, unknown>
   const storedFee = (key: string) => String(storedFees[key] ?? '')
+  const storedBlocks = ((settings.data as Row | undefined)?.billFeeBlocks ?? {}) as Record<string, Record<string, unknown> | null>
+  const storedBlock = (key: string): Block => ({
+    every: String(storedBlocks[key]?.every ?? ''),
+    fee: String(storedBlocks[key]?.fee ?? ''),
+  })
+  const blockChanged = (key: string) =>
+    blocks[key] !== undefined && (blocks[key].every !== storedBlock(key).every || blocks[key].fee !== storedBlock(key).fee)
 
   // Seeded once the server value arrives, then left alone so typing is never
   // overwritten by a background refetch mid-edit.
@@ -69,6 +89,13 @@ export default function Settings() {
     const nextFees: Record<string, string> = {}
     for (const field of BILL_FEES) nextFees[field.key] = String(table[field.key] ?? '')
     setFees(nextFees)
+
+    const blockTable = (data.billFeeBlocks ?? {}) as Record<string, Record<string, unknown> | null>
+    const nextBlocks: Record<string, Block> = {}
+    for (const field of BLOCK_FEES) {
+      nextBlocks[field.key] = { every: String(blockTable[field.key]?.every ?? ''), fee: String(blockTable[field.key]?.fee ?? '') }
+    }
+    setBlocks(nextBlocks)
 
     setNotes(String(data.addressNotes ?? ''))
     setReferralBonus(String(data.buyerReferralRewardNaira ?? ''))
@@ -100,6 +127,17 @@ export default function Settings() {
       }
       if (feesChanged) patch.billFees = feePatch
 
+      // Block rules go whole too, for the same reason.
+      if (BLOCK_FEES.some((f) => blockChanged(f.key))) {
+        const blockPatch: Row = {}
+        for (const field of BLOCK_FEES) {
+          const b = blocks[field.key]
+          if (!b || b.every === '' || b.fee === '') continue
+          blockPatch[field.key] = { every: Number(b.every), fee: Number(b.fee) }
+        }
+        patch.billFeeBlocks = blockPatch
+      }
+
       if (notes !== String(original.addressNotes ?? '')) patch.addressNotes = notes
       if (referralBonus !== String(original.buyerReferralRewardNaira ?? '')) {
         patch.buyerReferralRewardNaira = Number(referralBonus)
@@ -126,6 +164,7 @@ export default function Settings() {
   const dirty =
     FIELDS.some((f) => draft[f.key] !== undefined && draft[f.key] !== String(original[f.key] ?? '')) ||
     BILL_FEES.some((f) => fees[f.key] !== undefined && fees[f.key] !== storedFee(f.key)) ||
+    BLOCK_FEES.some((f) => blockChanged(f.key)) ||
     notes !== String(original.addressNotes ?? '') ||
     referralBonus !== String(original.buyerReferralRewardNaira ?? '') ||
     referralLive !== (original.buyerReferralRewardsLive === true)
@@ -281,6 +320,44 @@ export default function Settings() {
                     </span>
                   )}
                 </p>
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-5 text-[13px] font-semibold text-ink">Large bills: fee per block</p>
+          <p className="mt-0.5 text-[11.5px] text-ink-faint">
+            Added on top of the flat fee: the fee for every started block. ₦100 per ₦5,000 charges ₦100 on a ₦5,000
+            token and ₦300 on ₦12,000. Set the fee to 0 to switch it off.
+          </p>
+          <div className="mt-2.5 grid gap-3.5 sm:grid-cols-3">
+            {BLOCK_FEES.map((field) => (
+              <div key={field.key} className="rounded-lg border border-line px-3 py-2.5">
+                <p className="text-[12.5px] font-semibold text-ink">{field.label}</p>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <Input
+                    label="Fee (₦)"
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    disabled={settings.isLoading}
+                    value={blocks[field.key]?.fee ?? ''}
+                    onChange={(e) => setBlocks({ ...blocks, [field.key]: { ...(blocks[field.key] ?? { every: '', fee: '' }), fee: e.target.value } })}
+                  />
+                  <Input
+                    label="Per (₦)"
+                    type="number"
+                    inputMode="numeric"
+                    min={500}
+                    disabled={settings.isLoading}
+                    value={blocks[field.key]?.every ?? ''}
+                    onChange={(e) => setBlocks({ ...blocks, [field.key]: { ...(blocks[field.key] ?? { every: '', fee: '' }), every: e.target.value } })}
+                  />
+                </div>
+                {blockChanged(field.key) && (
+                  <p className="mt-1 text-[11.5px] font-semibold text-warn">
+                    was ₦{storedBlock(field.key).fee || '—'} per ₦{storedBlock(field.key).every || '—'}
+                  </p>
+                )}
               </div>
             ))}
           </div>
