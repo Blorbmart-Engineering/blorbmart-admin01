@@ -695,6 +695,64 @@ export interface StockImage extends FallbackMenuImage {
   updatedAt: number | null
 }
 
+/* ── Blorbmart for Work ─────────────────────────────────────────────── */
+
+export interface WorkCompanyRow {
+  id: string
+  name: string
+  kind: string
+  campusId: string
+  campusName: string
+  status: 'pending' | 'active' | 'suspended' | 'closed' | 'rejected'
+  plan: string
+  planLabel: string
+  maxSeats: number
+  seatFee: number
+  seats: Record<string, number>
+  activeMembers: number
+  offices: { id: string; name: string; address: { addressLine1: string }; dropTimes: string[] }[]
+  team: { uid: string; role: string; name: string; email: string }[]
+  contactName: string
+  contactPhone: string
+  contactEmail: string
+  staffEstimate: number | null
+  rejectReason: string | null
+  suspendReason: string | null
+  createdAt: number | null
+  approvedAt: number | null
+  balance: number
+  feesPaid: number
+  budgetFunded: number
+  notes?: string
+}
+
+export interface WorkInvoiceRow {
+  id: string
+  kind: string
+  month: string | null
+  seats: number
+  addSeats: number
+  feeAmount: number
+  budgetAmount: number
+  total: number
+  status: string
+  paidVia: string | null
+  cancelReason: string | null
+  reference: string
+  createdAt: number | null
+  paidAt: number | null
+  needsReview?: boolean
+}
+
+export interface WorkCompanyDetail {
+  company: WorkCompanyRow
+  balance: number
+  members: { uid: string; name: string; email: string; phone: string; team: string; dailyLimit: number; status: string; deliveryMode: string }[]
+  invoices: WorkInvoiceRow[]
+  ledger: { id: string; type: string; amount: number; balanceAfter: number; orderId: string | null; staffName: string | null; note: string | null; at: number | null }[]
+  plans: { id: string; label: string; maxSeats: number; maxOffices: number; seatFee: number }[]
+}
+
 export const adminApi = {
   me: () => unwrap<AdminIdentity>(api.get('/api/admin/me')),
 
@@ -970,6 +1028,15 @@ export const adminApi = {
     unwrap<RestaurantMenu>(api.get(`/api/admin/restaurant-menus/${encodeURIComponent(storeId)}`)),
   fallbackMenuImages: () =>
     unwrap<FallbackMenuImage[]>(api.get('/api/admin/restaurant-menus/fallback-images')),
+  workCompanies: (status = '') =>
+    unwrap<WorkCompanyRow[]>(api.get('/api/admin/work-companies', { params: status ? { status } : {} })),
+  workCompany: (id: string) => unwrap<WorkCompanyDetail>(api.get(`/api/admin/work-companies/${encodeURIComponent(id)}`)),
+  workCompanyStatus: (id: string, body: { action: string; reason?: string; plan?: string; seatFee?: number | null }) =>
+    unwrap<WorkCompanyDetail>(api.post(`/api/admin/work-companies/${encodeURIComponent(id)}/status`, body)),
+  workCompanyAdjust: (id: string, body: { amount: number; reason: string; reference?: string }) =>
+    unwrap<{ balance: number }>(api.post(`/api/admin/work-companies/${encodeURIComponent(id)}/adjust`, body)),
+  workInvoiceTransfer: (id: string, invoiceId: string, body: { bankReference: string; note?: string }) =>
+    unwrap<WorkCompanyDetail>(api.post(`/api/admin/work-companies/${encodeURIComponent(id)}/invoices/${encodeURIComponent(invoiceId)}/transfer`, body)),
   stockImages: () => unwrap<StockImage[]>(api.get('/api/admin/stock-images')),
   createStockImage: (body: { title: string; category: string; tags: string; url: string }) =>
     unwrap<StockImage>(api.post('/api/admin/stock-images', body)),

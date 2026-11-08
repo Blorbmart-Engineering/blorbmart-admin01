@@ -66,6 +66,7 @@ const GROUPS: { label: string; items: { to: string; label: string; icon: typeof 
       { to: '/restaurant-menus', label: 'Restaurant menus', icon: Utensils },
       { to: '/stock-photos', label: 'Stock food photos', icon: Images },
       { to: '/vendors', label: 'Vendors', icon: Building2 },
+      { to: '/work-companies', label: 'Work companies', icon: Briefcase },
       { to: '/vendor-readiness', label: 'Vendor readiness', icon: ClipboardCheck },
       { to: '/campuses', label: 'Campuses', icon: GraduationCap },
       { to: '/events', label: 'Events', icon: CalendarDays },
