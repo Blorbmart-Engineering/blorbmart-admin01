@@ -683,6 +683,16 @@ export interface FallbackMenuImage {
   title: string
   category: string
   url: string
+  tags?: string[]
+}
+
+/** A photo in the Blorbmart stock library (admin view, hidden ones included). */
+export interface StockImage extends FallbackMenuImage {
+  tags: string[]
+  hidden: boolean
+  builtIn: boolean
+  createdAt: number | null
+  updatedAt: number | null
 }
 
 export const adminApi = {
@@ -960,6 +970,13 @@ export const adminApi = {
     unwrap<RestaurantMenu>(api.get(`/api/admin/restaurant-menus/${encodeURIComponent(storeId)}`)),
   fallbackMenuImages: () =>
     unwrap<FallbackMenuImage[]>(api.get('/api/admin/restaurant-menus/fallback-images')),
+  stockImages: () => unwrap<StockImage[]>(api.get('/api/admin/stock-images')),
+  createStockImage: (body: { title: string; category: string; tags: string; url: string }) =>
+    unwrap<StockImage>(api.post('/api/admin/stock-images', body)),
+  updateStockImage: (id: string, body: Partial<{ title: string; category: string; tags: string; hidden: boolean }>) =>
+    unwrap<StockImage>(api.patch(`/api/admin/stock-images/${encodeURIComponent(id)}`, body)),
+  deleteStockImage: (id: string) =>
+    unwrap<{ id: string }>(api.delete(`/api/admin/stock-images/${encodeURIComponent(id)}`)),
   createRestaurantMenuItem: (storeId: string, body: Row) =>
     unwrap<RestaurantMenuItem>(api.post(`/api/admin/restaurant-menus/${encodeURIComponent(storeId)}/items`, body)),
   updateRestaurantMenuItem: (storeId: string, id: string, body: Row) =>

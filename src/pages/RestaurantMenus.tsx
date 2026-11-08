@@ -53,6 +53,7 @@ export default function RestaurantMenus() {
   const [selectedStore, setSelectedStore] = useState('')
   const [editing, setEditing] = useState<Editor | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [photoSearch, setPhotoSearch] = useState('')
 
   const restaurants = useQuery({
     queryKey: ['restaurant-menu-restaurants', search],
@@ -63,7 +64,7 @@ export default function RestaurantMenus() {
     queryFn: () => adminApi.restaurantMenu(selectedStore),
     enabled: Boolean(selectedStore),
   })
-  const fallback = useQuery({ queryKey: ['fallback-menu-images'], queryFn: adminApi.fallbackMenuImages, staleTime: Infinity })
+  const fallback = useQuery({ queryKey: ['fallback-menu-images'], queryFn: adminApi.fallbackMenuImages, staleTime: 60_000 })
 
   const save = useMutation({
     mutationFn: () => {
@@ -159,7 +160,7 @@ export default function RestaurantMenus() {
                   <div key={item.id} className="overflow-hidden rounded-xl border border-line bg-raised">
                     <div className="relative h-36 bg-surface-sunk">
                       {item.images?.[0] ? <img src={item.images[0]} alt="" className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-ink-faint"><ImagePlus /></div>}
-                      {item.imageSource === 'platform' && <Badge className="absolute left-2 top-2" tone="info">Fallback image</Badge>}
+                      {item.imageSource === 'platform' && <Badge className="absolute left-2 top-2" tone="info">Blorbmart photo</Badge>}
                     </div>
                     <div className="space-y-2 p-3">
                       <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="truncate font-semibold text-ink">{item.name}</p><p className="text-[12px] text-ink-faint">{item.section || 'Unsectioned'}</p></div><p className="font-semibold text-ink">₦{Number(item.discountPrice || item.price).toLocaleString()}</p></div>
@@ -178,8 +179,9 @@ export default function RestaurantMenus() {
           <div className="grid gap-3 sm:grid-cols-2"><Input label="Item name" placeholder="Jollof rice and chicken" value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /><Input label="Section" placeholder="Rice dishes" value={editing.section} onChange={(e) => setEditing({ ...editing, section: e.target.value })} /></div>
           <Textarea label="Description" rows={3} placeholder="What the customer should know" value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} />
           <div className="grid gap-3 sm:grid-cols-2"><Input label="Price" type="number" min="1" value={editing.price} onChange={(e) => setEditing({ ...editing, price: e.target.value })} /><Input label="Discount price (optional)" type="number" min="0" value={editing.discountPrice} onChange={(e) => setEditing({ ...editing, discountPrice: e.target.value })} /></div>
-          <div><p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-faint">Item picture</p><div className="flex flex-wrap gap-2"><Button size="sm" variant={editing.imageSource === 'restaurant' ? 'primary' : 'outline'} icon={Upload} onClick={() => input.current?.click()}>Upload restaurant photo</Button><Button size="sm" variant={editing.imageSource === 'platform' ? 'primary' : 'outline'} onClick={() => setEditing({ ...editing, imageSource: 'platform', imageUrl: '', imageAssetId: '' })}>Choose fallback image</Button></div><input ref={input} className="hidden" type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; void onUpload(file) }} />{uploading && <p className="mt-2 text-[12px] text-ink-faint">Uploading photo…</p>}{editing.imageUrl && <img src={editing.imageUrl} alt="Selected item" className="mt-3 h-32 w-32 rounded-lg object-cover" />}</div>
-          {editing.imageSource === 'platform' && <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{(fallback.data ?? []).map((image: FallbackMenuImage) => <button key={image.id} onClick={() => setEditing({ ...editing, imageUrl: image.url, imageAssetId: image.id })} className={`overflow-hidden rounded-lg border text-left ${editing.imageAssetId === image.id ? 'border-brand ring-2 ring-brand/30' : 'border-line'}`}><img src={image.url} alt="" className="h-20 w-full object-cover" /><span className="block truncate px-2 py-1.5 text-[11px] font-semibold text-ink">{image.title}</span></button>)}</div>}
+          <div><p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-faint">Item picture</p><div className="flex flex-wrap gap-2"><Button size="sm" variant={editing.imageSource === 'restaurant' ? 'primary' : 'outline'} icon={Upload} onClick={() => input.current?.click()}>Upload restaurant photo</Button><Button size="sm" variant={editing.imageSource === 'platform' ? 'primary' : 'outline'} onClick={() => setEditing({ ...editing, imageSource: 'platform', imageUrl: '', imageAssetId: '' })}>Choose a Blorbmart photo</Button></div><input ref={input} className="hidden" type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; void onUpload(file) }} />{uploading && <p className="mt-2 text-[12px] text-ink-faint">Uploading photo…</p>}{editing.imageUrl && <img src={editing.imageUrl} alt="Selected item" className="mt-3 h-32 w-32 rounded-lg object-cover" />}</div>
+          {editing.imageSource === 'platform' && <Input aria-label="Search Blorbmart photos" placeholder="Search photos: jollof, drinks…" value={photoSearch} onChange={(e) => setPhotoSearch(e.target.value)} />}
+          {editing.imageSource === 'platform' && <div className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-4">{(fallback.data ?? []).filter((image) => !photoSearch.trim() || `${image.title} ${image.category} ${(image.tags ?? []).join(' ')}`.toLowerCase().includes(photoSearch.trim().toLowerCase())).map((image: FallbackMenuImage) => <button key={image.id} onClick={() => setEditing({ ...editing, imageUrl: image.url, imageAssetId: image.id })} className={`overflow-hidden rounded-lg border text-left ${editing.imageAssetId === image.id ? 'border-brand ring-2 ring-brand/30' : 'border-line'}`}><img src={image.url} alt="" className="h-20 w-full object-cover" /><span className="block truncate px-2 py-1.5 text-[11px] font-semibold text-ink">{image.title}</span></button>)}</div>}
           <label className="flex items-center gap-2 text-[13px] text-ink-soft"><input type="checkbox" checked={editing.isAvailable} onChange={(e) => setEditing({ ...editing, isAvailable: e.target.checked })} /> Available to customers immediately</label>
         </div>}
       </Modal>

@@ -22,6 +22,7 @@ const ActivityLog = lazy(() => import('./pages/ActivityLog'))
 const Orders = lazy(() => import('./pages/Orders'))
 const Products = lazy(() => import('./pages/Products'))
 const RestaurantMenus = lazy(() => import('./pages/RestaurantMenus'))
+const StockPhotos = lazy(() => import('./pages/StockPhotos'))
 const Vendors = lazy(() => import('./pages/Vendors'))
 const Campuses = lazy(() => import('./pages/Campuses'))
 const AdminMarket = lazy(() => import('./pages/AdminMarket'))
@@ -185,6 +186,7 @@ export default function App() {
                 ['/orders', <Orders key="o" />],
                 ['/products', <Products key="p" />],
                 ['/restaurant-menus', <RestaurantMenus key="rm" />],
+                ['/stock-photos', <StockPhotos key="sp" />],
                 ['/vendors', <Vendors key="v" />],
                 ['/campuses', <Campuses key="c" />],
                 ['/campuses/:campusId/market', <AdminMarket key="cmk" />],
