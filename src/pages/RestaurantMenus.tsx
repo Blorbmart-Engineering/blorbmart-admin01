@@ -12,7 +12,6 @@ import {
   Input,
   Modal,
   PageHeader,
-  Select,
   Textarea,
 } from '../components/ui'
 
