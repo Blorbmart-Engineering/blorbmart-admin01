@@ -1484,6 +1484,54 @@ export const seasonsApi = {
   remove: (id: string) => unwrap<{ id: string }>(api.delete(`/api/admin/seasons/${encodeURIComponent(id)}`)),
 }
 
+/** Money off at one store, applied with no code (backend storeDiscountService). */
+export type StoreDiscountKind = 'percent' | 'fixed' | 'delivery'
+export interface StoreDiscount {
+  id: string
+  storeId: string
+  storeName: string
+  kind: StoreDiscountKind
+  /** Percent, or naira. Null on a delivery discount means free delivery. */
+  value: number | null
+  maxDiscount: number | null
+  minSubtotal: number | null
+  fundedBy: 'platform' | 'store'
+  active: boolean
+  startsAt: string | null
+  endsAt: string | null
+  note: string
+  label: string
+  status: 'live' | 'scheduled' | 'ended' | 'paused'
+  createdAt: string | null
+}
+export interface StoreDiscountInput {
+  storeId: string
+  kind: StoreDiscountKind
+  value: number | null
+  maxDiscount?: number | null
+  minSubtotal?: number | null
+  fundedBy: 'platform' | 'store'
+  startsAt?: string | null
+  endsAt?: string | null
+  active?: boolean
+  note?: string
+}
+export interface StoreOption {
+  id: string
+  name: string
+  universityName: string
+  closed: boolean
+}
+
+export const storeDiscountsApi = {
+  list: () => unwrap<StoreDiscount[]>(api.get('/api/admin/store-discounts')),
+  stores: () => unwrap<StoreOption[]>(api.get('/api/admin/store-discounts/stores')),
+  create: (body: StoreDiscountInput) => unwrap<StoreDiscount>(api.post('/api/admin/store-discounts', body)),
+  update: (id: string, body: Partial<StoreDiscountInput>) =>
+    unwrap<StoreDiscount>(api.patch(`/api/admin/store-discounts/${encodeURIComponent(id)}`, body)),
+  remove: (id: string) => unwrap<{ id: string }>(api.delete(`/api/admin/store-discounts/${encodeURIComponent(id)}`)),
+}
+
 export const announcementsApi = {
   list: () => unwrap<{ announcements: Announcement[] }>(api.get('/api/admin/announcements')),
   create: (body: AnnouncementInput) =>

@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   Star,
   BadgePercent,
+  Tags,
   PiggyBank,
   Bike,
   Briefcase,
@@ -102,6 +103,7 @@ const GROUPS: { label: string; items: { to: string; label: string; icon: typeof 
     // /commissions for anyone with it bookmarked, and says so.
     items: [
       { to: '/promos', label: 'Promo codes', icon: BadgePercent },
+      { to: '/store-discounts', label: 'Store discounts', icon: Tags },
       { to: '/landmarks', label: 'Delivery zones', icon: MapPin },
       { to: '/carousel', label: 'Carousel', icon: Images },
       { to: '/broadcast', label: 'Broadcast', icon: Megaphone },
