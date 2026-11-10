@@ -42,6 +42,7 @@ const MarketingLibrary = lazy(() => import('./pages/MarketingLibrary'))
 const Bills = lazy(() => import('./pages/Bills'))
 const Promos = lazy(() => import('./pages/Promos'))
 const StoreDiscounts = lazy(() => import('./pages/StoreDiscounts'))
+const StoreLocations = lazy(() => import('./pages/StoreLocations'))
 const Landmarks = lazy(() => import('./pages/Landmarks'))
 const Carousel = lazy(() => import('./pages/Carousel'))
 const Events = lazy(() => import('./pages/Events'))
@@ -212,6 +213,7 @@ export default function App() {
                 ['/gift-cards', <GiftCards key="gc" />],
                 ['/promos', <Promos key="pr" />],
                 ['/store-discounts', <StoreDiscounts key="sd" />],
+                ['/store-locations', <StoreLocations key="sl" />],
                 ['/landmarks', <Landmarks key="l" />],
                 ['/carousel', <Carousel key="ca" />],
                 ['/broadcast', <Broadcast key="br" />],

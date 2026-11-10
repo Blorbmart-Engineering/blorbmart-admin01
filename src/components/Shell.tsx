@@ -104,6 +104,7 @@ const GROUPS: { label: string; items: { to: string; label: string; icon: typeof 
     items: [
       { to: '/promos', label: 'Promo codes', icon: BadgePercent },
       { to: '/store-discounts', label: 'Store discounts', icon: Tags },
+      { to: '/store-locations', label: 'Store locations', icon: MapPin },
       { to: '/landmarks', label: 'Delivery zones', icon: MapPin },
       { to: '/carousel', label: 'Carousel', icon: Images },
       { to: '/broadcast', label: 'Broadcast', icon: Megaphone },

@@ -1532,6 +1532,35 @@ export const storeDiscountsApi = {
   remove: (id: string) => unwrap<{ id: string }>(api.delete(`/api/admin/store-discounts/${encodeURIComponent(id)}`)),
 }
 
+/* ─────────────────────────── Store locations ─────────────────────────── */
+
+export type PinStatus = 'ok' | 'missing' | 'far'
+
+export interface StoreLocationRow {
+  id: string
+  name: string
+  address: string
+  city: string
+  universityId: string | null
+  logoUrl: string | null
+  approvalStatus: string | null
+  isOpen: boolean
+  pin: { lat: number; lng: number } | null
+  status: PinStatus
+  kmFromCentre: number | null
+  locationSetBy: string | null
+  locationUpdatedAt: string | null
+}
+
+export const storeLocationsApi = {
+  list: () =>
+    unwrap<{ stores: StoreLocationRow[]; counts: Record<PinStatus, number> }>(api.get('/api/admin/store-locations')),
+  save: (storeId: string, body: { lat: number; lng: number; address?: string }) =>
+    unwrap<{ id: string; status: PinStatus; address: string; locationLabel: string | null }>(
+      api.patch(`/api/admin/stores/${encodeURIComponent(storeId)}/location`, body),
+    ),
+}
+
 export const announcementsApi = {
   list: () => unwrap<{ announcements: Announcement[] }>(api.get('/api/admin/announcements')),
   create: (body: AnnouncementInput) =>

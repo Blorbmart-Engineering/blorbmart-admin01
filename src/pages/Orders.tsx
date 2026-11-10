@@ -493,6 +493,32 @@ function SellerOverrideDialog({
   )
 }
 
+/**
+ * How the delivery fee was worked out (orderPricingService's deliveryMeta).
+ * A flat fee on a food order means a pin was missing; the reason says whose,
+ * and Store locations is where a store's is fixed.
+ */
+function deliveryBasis(meta: Row | undefined) {
+  if (!meta || typeof meta !== 'object') return '—'
+  const mode = String(meta.mode ?? '')
+  if (mode === 'food_distance') {
+    const km = Number(meta.distanceKm)
+    const how = meta.distanceSource === 'tomtom' ? 'road route' : 'straight line × road factor'
+    return `Distance${Number.isFinite(km) ? `, ${km} km` : ''} (${how})`
+  }
+  if (mode === 'flat_fallback') {
+    return (
+      <span className="text-warn">
+        Flat fee: {String(meta.reason ?? 'no pin')}
+      </span>
+    )
+  }
+  if (mode === 'landmark') return `Landmark: ${String(meta.name ?? '')}`
+  if (mode === 'campus') return 'Campus flat fee'
+  if (mode === 'flat') return 'Flat fee'
+  return mode || '—'
+}
+
 function OrderDetail({ order }: { order: Row }) {
   const items = (pick<unknown[]>(order, 'items', 'orderItems') ?? []) as Row[]
 
@@ -510,6 +536,7 @@ function OrderDetail({ order }: { order: Row }) {
           <Detail label="Method">{text(pick(order, 'paymentMethod'))}</Detail>
           <Detail label="Subtotal">{money(pick(order, 'subtotal'))}</Detail>
           <Detail label="Delivery">{money(pick(order, 'deliveryFee'))}</Detail>
+          <Detail label="Delivery priced by">{deliveryBasis(pick<Row>(order, 'deliveryMeta'))}</Detail>
           <Detail label="Service fee">{money(pick(order, 'serviceFee'))}</Detail>
           <Detail label="Total">
             <span className="font-bold">
