@@ -46,6 +46,7 @@ export default function Riders() {
 
   const status = params.get('status') ?? 'all'
   const universityId = params.get('universityId') ?? 'all'
+  const verification = params.get('verification') ?? 'all'
   const [search, setSearch] = useState(params.get('q') ?? '')
   const q = params.get('q') ?? ''
 
@@ -62,8 +63,9 @@ export default function Riders() {
   }
 
   const riders = useQuery({
-    queryKey: ['riders', status, universityId, q],
-    queryFn: () => adminApi.riders({ status, universityId, q, limit: 200 }),
+    queryKey: ['riders', status, universityId, q, verification],
+    queryFn: () =>
+      adminApi.riders({ status, universityId, q, limit: 200, verification: verification === 'all' ? undefined : verification }),
     staleTime: 20_000,
   })
 
@@ -165,6 +167,20 @@ export default function Riders() {
                   {s === 'all' ? 'All statuses' : titleCase(s)}
                 </option>
               ))}
+            </Select>
+            {/* The approval queue: riders who sent their student ID and
+                selfie and are waiting for someone to check them. */}
+            <Select
+              label="ID check"
+              value={verification}
+              onChange={(e) => setParam('verification', e.target.value)}
+              className="w-40"
+            >
+              <option value="all">Any</option>
+              <option value="pending">To approve</option>
+              <option value="verified">Verified</option>
+              <option value="rejected">Rejected</option>
+              <option value="unverified">Not sent</option>
             </Select>
             <Select
               label="Campus"

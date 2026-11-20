@@ -38,6 +38,7 @@ export interface VerifiableRider {
   documents: {
     idType?: string | null
     idNumber?: string | null
+    fullName?: string | null
     selfieUrl?: string | null
     idImageUrl?: string | null
   } | null
@@ -69,7 +70,7 @@ export default function RiderVerificationDialog({
   const save = useMutation({
     mutationFn: (status: 'verified' | 'rejected') => decide(rider.uid, status, status === 'rejected' ? reason.trim() : undefined),
     onSuccess: (_data, status) => {
-      toast.success(status === 'verified' ? 'Rider verified' : 'Sent back to the rider')
+      toast.success(status === 'verified' ? 'Rider approved' : 'Sent back to the rider')
       onDone()
       onClose()
     },
@@ -109,7 +110,7 @@ export default function RiderVerificationDialog({
                   loading={save.isPending}
                   onClick={() => save.mutate('verified')}
                 >
-                  Verify
+                  Approve
                 </Button>
               </>
             )}
@@ -125,12 +126,13 @@ export default function RiderVerificationDialog({
 
         <div className="grid gap-3 sm:grid-cols-2">
           <Photo label="Selfie" url={docs?.selfieUrl} />
-          <Photo label="ID" url={docs?.idImageUrl} />
+          <Photo label={docs?.idType === 'Student ID' ? 'Student ID' : 'ID'} url={docs?.idImageUrl} />
         </div>
 
         <div className="rounded-lg border border-line bg-surface-sunk px-3.5 py-3">
+          {docs?.fullName && <Detail label="Name on student ID">{docs.fullName}</Detail>}
           <Detail label="ID type">{text(docs?.idType)}</Detail>
-          <Detail label="ID number">{text(docs?.idNumber)}</Detail>
+          <Detail label={docs?.idType === 'Student ID' ? 'Matric number' : 'ID number'}>{text(docs?.idNumber)}</Detail>
           <Detail label="Phone">{text(rider.phone)}</Detail>
           <Detail label="Vehicle">{[rider.vehicleType, rider.plateNumber].filter(Boolean).join(' · ') || '—'}</Detail>
           {rider.verification.submittedAt && <Detail label="Sent">{dateTime(rider.verification.submittedAt)}</Detail>}
@@ -146,8 +148,8 @@ export default function RiderVerificationDialog({
 
         {!complete ? (
           <p className="text-[13px] leading-relaxed text-ink-soft">
-            This rider has not sent both photos yet. They are asked for them in the rider app, under Account → Get
-            verified.
+            This rider has not sent their student ID and selfie yet. The rider app asks for them at signup, and again
+            under Account → Get verified.
           </p>
         ) : rejecting ? (
           <Textarea
@@ -159,8 +161,8 @@ export default function RiderVerificationDialog({
           />
         ) : (
           <p className="text-[13px] leading-relaxed text-ink-soft">
-            Verify only if the selfie is clearly the person on the ID and the name matches the account. Customers see
-            this photo and a verified mark when the rider is on the way to them.
+            Approve only if the selfie is clearly the person on the student ID and the name and matric number match it.
+            Customers see this photo and a verified mark when the rider is on the way to them.
           </p>
         )}
       </div>

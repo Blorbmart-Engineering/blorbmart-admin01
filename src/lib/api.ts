@@ -120,6 +120,7 @@ export interface Rider {
   documents: {
     idType: string
     idNumber: string
+    fullName?: string | null
     selfieUrl?: string | null
     idImageUrl?: string | null
   } | null
@@ -1269,6 +1270,7 @@ export type VerificationStatus = 'unverified' | 'pending' | 'verified' | 'reject
 export interface RiderDocuments {
   idType: string | null
   idNumber: string | null
+  fullName?: string | null
   selfieUrl: string | null
   idImageUrl: string | null
 }
