@@ -503,7 +503,7 @@ function deliveryBasis(meta: Row | undefined) {
   const mode = String(meta.mode ?? '')
   if (mode === 'food_distance') {
     const km = Number(meta.distanceKm)
-    const how = meta.distanceSource === 'tomtom' ? 'road route' : 'straight line × road factor'
+    const how = meta.distanceSource === 'google' ? 'Google Maps road route' : meta.distanceSource === 'tomtom' ? 'TomTom road route' : 'straight line × road factor'
     return `Distance${Number.isFinite(km) ? `, ${km} km` : ''} (${how})`
   }
   if (mode === 'flat_fallback') {

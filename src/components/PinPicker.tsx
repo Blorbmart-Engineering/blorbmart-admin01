@@ -6,12 +6,14 @@
  *
  * How it works. The pin is fixed in the middle of the map and the person
  * moves the map under it, which is far easier on a phone than dragging a
- * marker. When the map stops, the backend (/api/geo/reverse, OpenStreetMap)
+ * marker. When the map stops, the backend (/api/geo/reverse: Google Maps,
+ * with OpenStreetMap as the fallback)
  * turns the centre into a line a rider can read. Tiles and attribution come
  * from /api/geo/config so they can be changed for every app in one place;
  * the defaults below are only used if that call fails.
  *
- * Satellite (Esri World Imagery, with road and place names over it) is the
+ * Satellite (Google, or Esri if the backend has no Google key, with road
+ * and place names over it) is the
  * default, because a student recognises their hostel roof long before they
  * recognise a street name. "Map" switches to a street map.
  */
@@ -37,14 +39,14 @@ interface SearchHit extends Place, Pin {
   distanceKm: number
 }
 
-interface LayerConfig {
+export interface LayerConfig {
   url: string
   overlays: string[]
   maxNativeZoom: number
   attribution: string
 }
 
-interface MapConfig {
+export interface MapConfig {
   center: Pin
   zoom: number
   maxZoom: number
@@ -75,7 +77,8 @@ const FALLBACK_CONFIG: MapConfig = {
 }
 
 let configPromise: Promise<MapConfig> | null = null
-function loadConfig(): Promise<MapConfig> {
+/** Tiles and attribution from /api/geo/config (Google when the backend has a key), fetched once per page. */
+export function loadMapConfig(): Promise<MapConfig> {
   configPromise ??= fetch(`${API_BASE}/api/geo/config`)
     .then((r) => (r.ok ? r.json() : null))
     .then((body) => (body?.data?.layers ? (body.data as MapConfig) : FALLBACK_CONFIG))
@@ -210,7 +213,7 @@ export default function PinPicker({ value, onChange, height = 380, accent = '#AF
   useEffect(() => {
     ensureStyle()
     let cancelled = false
-    void loadConfig().then((cfg) => {
+    void loadMapConfig().then((cfg) => {
       if (cancelled || !box.current) return
       cfgRef.current = cfg
       const start = value ?? cfg.center
