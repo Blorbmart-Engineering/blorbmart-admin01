@@ -948,6 +948,23 @@ export const adminApi = {
       api.get('/api/admin/orders', { params: clean(params) }),
     ),
   order: (id: string) => unwrap<Row>(api.get(`/api/admin/orders/${id}`)),
+  riderAssignmentOptions: (id: string) =>
+    unwrap<{
+      order: Row
+      riders: Array<{
+        uid: string
+        name: string
+        vehicleType: string | null
+        online: boolean
+        lastKnownLocation: { latitude: number; longitude: number; updatedAt: number | null } | null
+        distanceToPickupKm: number | null
+        activeDeliveries: number
+      }>
+    }>(api.get(`/api/admin/orders/${id}/assignment-options`)),
+  assignRider: (id: string, body: { riderId: string; reason: string; actionKey: string; secondAdminId?: string }) =>
+    unwrap<Row>(api.post(`/api/admin/orders/${id}/assign-rider`, body)),
+  unassignRider: (id: string, body: { reason: string; actionKey: string }) =>
+    unwrap<Row>(api.post(`/api/admin/orders/${id}/unassign-rider`, body)),
   /**
    * Takes a refunded amount back off the seller.
    *

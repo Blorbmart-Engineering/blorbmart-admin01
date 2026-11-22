@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
@@ -524,6 +524,7 @@ function OrderDetail({ order }: { order: Row }) {
 
   return (
     <div className="space-y-5">
+      <AdminRiderAssignment order={order} />
       <div className="grid gap-5 sm:grid-cols-2">
         <div>
           <h3 className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-faint">Order</h3>
@@ -580,5 +581,108 @@ function OrderDetail({ order }: { order: Row }) {
         )}
       </div>
     </div>
+  )
+}
+
+function actionKey(prefix: string) {
+  const random = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  return `${prefix}-${random}`
+}
+
+function AdminRiderAssignment({ order }: { order: Row }) {
+  const id = String(pick(order, 'orderId', 'id') ?? '')
+  const currentRiderId = String(pick(order, 'riderId') ?? '')
+  const [riderId, setRiderId] = useState(currentRiderId)
+  const [reason, setReason] = useState('')
+  const [secondAdminId, setSecondAdminId] = useState('')
+  useEffect(() => setRiderId(currentRiderId), [id, currentRiderId])
+  const options = useQuery({
+    queryKey: ['rider-assignment-options', id],
+    queryFn: () => adminApi.riderAssignmentOptions(id),
+    enabled: Boolean(id),
+    staleTime: 10_000,
+  })
+  const queryClient = useQueryClient()
+  const assign = useMutation({
+    mutationFn: () => adminApi.assignRider(id, { riderId, reason: reason.trim(), actionKey: actionKey('assign'), secondAdminId: secondAdminId.trim() || undefined }),
+    onSuccess: (result) => {
+      toast.success(String(pick(result, 'action') ?? 'Rider assigned'))
+      setReason('')
+      queryClient.invalidateQueries({ queryKey: ['orders'] })
+      queryClient.invalidateQueries({ queryKey: ['rider-assignment-options', id] })
+    },
+    onError: (error) => toast.error(errorMessage(error, 'Could not assign that rider.')),
+  })
+  const unassign = useMutation({
+    mutationFn: () => adminApi.unassignRider(id, { reason: reason.trim(), actionKey: actionKey('unassign') }),
+    onSuccess: () => {
+      toast.success('Rider unassigned; order is back on the rider board')
+      setRiderId('')
+      setReason('')
+      queryClient.invalidateQueries({ queryKey: ['orders'] })
+      queryClient.invalidateQueries({ queryKey: ['rider-assignment-options', id] })
+    },
+    onError: (error) => toast.error(errorMessage(error, 'Could not unassign that rider.')),
+  })
+  const riders = options.data?.riders ?? []
+  const selected = riders.find((rider) => rider.uid === riderId)
+  const busy = assign.isPending || unassign.isPending
+
+  return (
+    <Card title="Rider assignment">
+      <div className="space-y-3">
+        <p className="text-[12.5px] text-ink-soft">
+          {currentRiderId
+            ? `Currently assigned to ${text(pick(order, 'riderName') ?? currentRiderId)}.`
+            : 'No rider is assigned. Choose an active rider to override the open offer.'}
+        </p>
+        {options.isError ? (
+          <p className="text-[12.5px] text-bad">{errorMessage(options.error, 'Could not load riders.')}</p>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+            <Select label="Rider" value={riderId} onChange={(event) => setRiderId(event.target.value)} disabled={busy || options.isLoading}>
+              <option value="">Choose an active rider…</option>
+              {riders.map((rider) => (
+                <option key={rider.uid} value={rider.uid}>
+                  {rider.name} · {rider.vehicleType || 'vehicle not set'} · {rider.online ? 'online' : 'offline'}
+                  {rider.distanceToPickupKm != null ? ` · ${rider.distanceToPickupKm.toFixed(1)} km` : ''}
+                  {rider.activeDeliveries ? ` · ${rider.activeDeliveries} active` : ''}
+                </option>
+              ))}
+            </Select>
+            <Textarea label="Required reason" rows={2} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Why does operations need to intervene?" />
+            <Input label="Second admin ID if picked up" value={secondAdminId} onChange={(event) => setSecondAdminId(event.target.value)} placeholder="Optional" />
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="primary"
+                loading={assign.isPending}
+                disabled={!riderId || !reason.trim() || busy}
+                onClick={() => assign.mutate()}
+              >
+                {currentRiderId ? 'Reassign' : 'Assign'}
+              </Button>
+              {currentRiderId && (
+                <Button variant="danger" loading={unassign.isPending} disabled={!reason.trim() || busy} onClick={() => unassign.mutate()}>
+                  Unassign
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+        {selected && (
+          <p className="text-[11.5px] text-ink-faint">
+            {selected.online ? 'Online' : 'Offline'} · {selected.activeDeliveries} active delivery(ies)
+            {selected.distanceToPickupKm != null ? ` · ${selected.distanceToPickupKm.toFixed(2)} km from the shop` : ' · no location available'}
+            {selected.lastKnownLocation?.updatedAt ? ` · location updated ${dateTime(selected.lastKnownLocation.updatedAt)}` : ''}
+          </p>
+        )}
+        {selected && selected.vehicleType?.toLowerCase() === 'foot' && (selected.distanceToPickupKm ?? 0) > 5 && (
+          <p className="text-[12px] font-semibold text-warn">Warning: this walking rider is more than 5 km from the shop.</p>
+        )}
+        {selected && selected.activeDeliveries > 0 && (
+          <p className="text-[12px] font-semibold text-warn">Warning: this rider already has {selected.activeDeliveries} active delivery(ies).</p>
+        )}
+      </div>
+    </Card>
   )
 }
