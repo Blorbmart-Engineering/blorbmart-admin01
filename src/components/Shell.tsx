@@ -92,6 +92,7 @@ const GROUPS: { label: string; items: { to: string; label: string; icon: typeof 
       { to: '/wallets', label: 'Wallets & payouts', icon: Wallet },
       { to: '/funding-alerts', label: 'Funding alerts', icon: ShieldAlert },
       { to: '/customer-wallets', label: 'Customer wallets', icon: Wallet },
+      { to: '/manual-wallet-credits', label: 'Physical wallet credits', icon: Wallet },
       { to: '/bills', label: 'Bill payments', icon: Receipt },
       { to: '/gift-cards', label: 'Gift cards', icon: Gift },
     ],

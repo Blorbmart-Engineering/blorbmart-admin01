@@ -815,6 +815,14 @@ export const adminApi = {
     userId: string,
     body: { direction: 'credit' | 'debit'; amount: number; reason: string; requestId: string; expectedBalance: number },
   ) => unwrap<WalletAdjustment>(api.post(`/api/admin/customer-wallets/${encodeURIComponent(userId)}/adjust`, body)),
+  manualWalletCredits: (status = 'all') =>
+    unwrap<Row[]>(api.get('/api/admin/wallet-credits', { params: { status } })),
+  uploadManualCreditProof: (body: { base64: string; mimeType: string; fileName: string }) =>
+    unwrap<Row>(api.post('/api/admin/wallet-credits/proof', body)),
+  submitManualWalletCredit: (body: Row) => unwrap<Row>(api.post('/api/admin/wallet-credits', body)),
+  approveManualWalletCredit: (id: string) => unwrap<Row>(api.post(`/api/admin/wallet-credits/${encodeURIComponent(id)}/approve`)),
+  reverseManualWalletCredit: (id: string, reason: string) =>
+    unwrap<Row>(api.post(`/api/admin/wallet-credits/${encodeURIComponent(id)}/reverse`, { reason, actionKey: `reverse_${id}_${Date.now()}` })),
 
   /* Oversight (routes/adminOversight.js) */
   overview: () => unwrap<Overview>(api.get('/api/admin/overview')),
@@ -974,8 +982,10 @@ export const adminApi = {
    * has been refunded" will leave them out of pocket. The amount goes over the
    * wire in kobo, which is what the endpoint expects.
    */
-  refundOrder: (id: string, body: { amountKobo: number; reason?: string; storeId?: string | null }) =>
+  orderReconciliation: (id: string) => unwrap<Row>(api.get(`/api/admin/orders/${id}/reconciliation`)),
+  refundOrder: (id: string, body: { amountKobo: number; destination: 'wallet' | 'paystack'; reason: string; components: { foodKobo: number; deliveryFeeKobo: number; serviceFeeKobo: number }; actionKey: string }) =>
     unwrap<Row>(api.post(`/api/admin/orders/${id}/refund`, body)),
+  approveOrderRefund: (id: string) => unwrap<Row>(api.post(`/api/admin/order-refunds/${id}/approve`)),
 
   /**
    * Corrects the seller details carried on an order.

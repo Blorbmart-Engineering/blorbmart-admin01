@@ -47,6 +47,13 @@ export default function Orders() {
   const [refundFor, setRefundFor] = useState<Row | null>(null)
   const [overrideFor, setOverrideFor] = useState<Row | null>(null)
 
+  const reconciliation = useQuery({
+    queryKey: ['order-reconciliation', selected ? String(pick(selected, 'orderId', 'id') ?? '') : null],
+    queryFn: () => adminApi.orderReconciliation(String(pick(selected!, 'orderId', 'id') ?? '')),
+    enabled: Boolean(selected),
+    staleTime: 10_000,
+  })
+
   const setParam = (key: string, value: string) => {
     const next = new URLSearchParams(params)
     if (!value || value === 'all') next.delete(key)
@@ -75,12 +82,13 @@ export default function Orders() {
     mutationFn: ({
       id,
       amountKobo,
+      destination,
       reason,
-      storeId,
-    }: { id: string; amountKobo: number; reason: string; storeId: string | null }) =>
-      adminApi.refundOrder(id, { amountKobo, reason, storeId }),
-    onSuccess: () => {
-      toast.success('Deducted from the seller wallet')
+      components,
+    }: { id: string; amountKobo: number; destination: 'wallet' | 'paystack'; reason: string; components: { foodKobo: number; deliveryFeeKobo: number; serviceFeeKobo: number } }) =>
+      adminApi.refundOrder(id, { amountKobo, destination, reason, components, actionKey: actionKey('refund') }),
+    onSuccess: (result) => {
+      toast.success(result.status === 'pending_approval' ? 'Refund submitted for approval' : 'Refund applied')
       setRefundFor(null)
       queryClient.invalidateQueries({ queryKey: ['orders'] })
     },
@@ -281,15 +289,16 @@ export default function Orders() {
           )
         }
       >
-        {selected && <OrderDetail order={selected} />}
+        {selected && <OrderDetail order={selected} reconciliation={reconciliation.data ?? null} loading={reconciliation.isLoading} />}
       </Modal>
 
       <RefundDialog
         order={refundFor}
+        reconciliation={refundFor ? (reconciliation.data ?? null) : null}
         pending={refund.isPending}
         onClose={() => setRefundFor(null)}
-        onSubmit={(amountKobo, reason, storeId) =>
-          refund.mutate({ id: orderId(refundFor as Row), amountKobo, reason, storeId })
+        onSubmit={(amountKobo, destination, reason, components) =>
+          refund.mutate({ id: orderId(refundFor as Row), amountKobo, destination, reason, components })
         }
       />
 
@@ -317,18 +326,24 @@ export default function Orders() {
  */
 function RefundDialog({
   order,
+  reconciliation,
   pending,
   onClose,
   onSubmit,
 }: {
   order: Row | null
+  reconciliation: Row | null
   pending: boolean
   onClose: () => void
-  onSubmit: (amountKobo: number, reason: string, storeId: string | null) => void
+  onSubmit: (amountKobo: number, destination: 'wallet' | 'paystack', reason: string, components: { foodKobo: number; deliveryFeeKobo: number; serviceFeeKobo: number }) => void
 }) {
   const total = pick<number>(order ?? {}, 'total', 'totalAmount', 'grandTotal', 'amount') ?? 0
   const [amount, setAmount] = useState('')
   const [reason, setReason] = useState('')
+  const [destination, setDestination] = useState<'wallet' | 'paystack'>('wallet')
+  const [food, setFood] = useState('')
+  const [deliveryFee, setDeliveryFee] = useState('0')
+  const [serviceFee, setServiceFee] = useState('0')
 
   // Re-seed whenever a different order opens the dialog.
   const [seededFor, setSeededFor] = useState<string | null>(null)
@@ -336,17 +351,22 @@ function RefundDialog({
   if (order && key !== seededFor) {
     setSeededFor(key)
     setAmount(total ? String(total) : '')
+    setFood(total ? String(total) : '')
+    setDeliveryFee('0')
+    setServiceFee('0')
     setReason('')
   }
 
   const naira = Number(amount)
-  const valid = Number.isFinite(naira) && naira > 0 && naira <= total * 2
+  const maxRefund = Number(reconciliation?.refundable ?? total)
+  const componentTotal = Number(food || 0) + Number(deliveryFee || 0) + Number(serviceFee || 0)
+  const valid = Number.isFinite(naira) && naira > 0 && naira <= maxRefund && Math.abs(componentTotal - naira) < 0.005 && reason.trim().length > 0
 
   return (
     <Modal
       open={Boolean(order)}
       onClose={onClose}
-      title="Deduct refund from seller"
+      title="Reconcile and refund order"
       footer={
         <>
           <Button onClick={onClose}>Cancel</Button>
@@ -356,14 +376,10 @@ function RefundDialog({
             loading={pending}
             disabled={!valid}
             onClick={() =>
-              onSubmit(
-                Math.round(naira * 100),
-                reason.trim() || 'Refund deduction',
-                (pick<string>(order ?? {}, 'storeId') as string) ?? null,
-              )
+              onSubmit(Math.round(naira * 100), destination, reason.trim(), { foodKobo: Math.round(Number(food || 0) * 100), deliveryFeeKobo: Math.round(Number(deliveryFee || 0) * 100), serviceFeeKobo: Math.round(Number(serviceFee || 0) * 100) })
             }
           >
-            Deduct {valid ? money(naira) : ''}
+            Refund {valid ? money(naira) : ''}
           </Button>
         </>
       }
@@ -377,6 +393,12 @@ function RefundDialog({
 
         <Detail label="Order total">{money(total)}</Detail>
         <Detail label="Seller">{text(pick(order ?? {}, 'storeName', 'vendorName'))}</Detail>
+        <Detail label="Remaining refundable">{money(maxRefund)}</Detail>
+
+        <Select label="Refund destination" value={destination} onChange={(e) => setDestination(e.target.value as 'wallet' | 'paystack')}>
+          <option value="wallet">Blorbmart wallet</option>
+          <option value="paystack">Original Paystack payment</option>
+        </Select>
 
         <Input
           label="Amount to deduct (₦)"
@@ -385,19 +407,32 @@ function RefundDialog({
           onChange={(e) => setAmount(e.target.value)}
           placeholder="0.00"
         />
+        <div className="grid gap-2 sm:grid-cols-3">
+          <Input label="Food portion (₦)" inputMode="decimal" value={food} onChange={(e) => setFood(e.target.value)} />
+          <Input label="Delivery portion (₦)" inputMode="decimal" value={deliveryFee} onChange={(e) => setDeliveryFee(e.target.value)} />
+          <Input label="Service portion (₦)" inputMode="decimal" value={serviceFee} onChange={(e) => setServiceFee(e.target.value)} />
+        </div>
         {amount !== '' && !valid && (
           <p className="text-[12px] font-semibold text-bad">
-            Enter an amount above zero and no more than twice the order total.
+            Enter an amount above zero and no more than the remaining refundable amount, with a reason.
           </p>
         )}
 
-        <Textarea
+        <Select
           label="Reason"
-          rows={3}
+
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          placeholder="Why this is being deducted — kept on the wallet entry."
-        />
+        >
+          <option value="">Choose a reason</option>
+          <option value="cancelled_before_fulfilment">Cancelled before fulfilment</option>
+          <option value="item_unavailable">Item unavailable</option>
+          <option value="not_delivered">Not delivered</option>
+          <option value="wrong_or_missing_items">Wrong or missing items</option>
+          <option value="overcharge">Overcharge</option>
+          <option value="duplicate_payment">Duplicate payment</option>
+          <option value="other">Other</option>
+        </Select>
       </div>
     </Modal>
   )
@@ -519,12 +554,23 @@ function deliveryBasis(meta: Row | undefined) {
   return mode || '—'
 }
 
-function OrderDetail({ order }: { order: Row }) {
+function OrderDetail({ order, reconciliation, loading }: { order: Row; reconciliation: Row | null; loading: boolean }) {
   const items = (pick<unknown[]>(order, 'items', 'orderItems') ?? []) as Row[]
 
   return (
     <div className="space-y-5">
       <AdminRiderAssignment order={order} />
+      <Card title="Money reconciliation">
+        {loading ? <p className="text-[12.5px] text-ink-faint">Loading payment and wallet records…</p> : reconciliation ? <div className="grid gap-2 sm:grid-cols-2">
+          <Detail label="Paid">{money(reconciliation.payment?.paid)}</Detail>
+          <Detail label="Remaining refundable">{money(reconciliation.refundable)}</Detail>
+          <Detail label="Payment reference">{text(reconciliation.payment?.reference)}</Detail>
+          <Detail label="Vendor credits">{String(reconciliation.vendorCredits?.length ?? 0)}</Detail>
+          <Detail label="Rider payouts">{String(reconciliation.riderPayouts?.length ?? 0)}</Detail>
+          <Detail label="Refunds">{String(reconciliation.refunds?.length ?? 0)}</Detail>
+          {reconciliation.flags?.length > 0 && <div className="sm:col-span-2 rounded-lg border border-warn/30 bg-warn-soft px-3 py-2 text-[12px] text-warn">{reconciliation.flags.map((flag: Row) => <div key={String(flag.code)}>{flag.code}: {flag.message}</div>)}</div>}
+        </div> : <p className="text-[12.5px] text-bad">Could not load reconciliation.</p>}
+      </Card>
       <div className="grid gap-5 sm:grid-cols-2">
         <div>
           <h3 className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-faint">Order</h3>

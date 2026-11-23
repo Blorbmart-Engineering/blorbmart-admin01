@@ -36,6 +36,7 @@ const Deliveries = lazy(() => import('./pages/Deliveries'))
 const Wallets = lazy(() => import('./pages/Wallets'))
 const FundingAlerts = lazy(() => import('./pages/FundingAlerts'))
 const CustomerWallets = lazy(() => import('./pages/CustomerWallets'))
+const ManualWalletCredits = lazy(() => import('./pages/ManualWalletCredits'))
 const Ratings = lazy(() => import('./pages/Ratings'))
 const VendorReadiness = lazy(() => import('./pages/VendorReadiness'))
 const MarketingLibrary = lazy(() => import('./pages/MarketingLibrary'))
@@ -206,6 +207,7 @@ export default function App() {
                 ['/wallets', <Wallets key="w" />],
                 ['/funding-alerts', <FundingAlerts key="fa" />],
                 ['/customer-wallets', <CustomerWallets key="cw" />],
+                ['/manual-wallet-credits', <ManualWalletCredits key="mwc" />],
                 ['/ratings', <Ratings key="rt" />],
                 ['/vendor-readiness', <VendorReadiness key="vr" />],
                 ['/marketing', <MarketingLibrary key="mk" />],
