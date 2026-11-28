@@ -973,6 +973,8 @@ export const adminApi = {
     unwrap<Row>(api.post(`/api/admin/orders/${id}/assign-rider`, body)),
   unassignRider: (id: string, body: { reason: string; actionKey: string }) =>
     unwrap<Row>(api.post(`/api/admin/orders/${id}/unassign-rider`, body)),
+  completeManualDelivery: (id: string, body: { riderId: string; reason: string; actionKey: string; secondAdminId?: string }) =>
+    unwrap<Row>(api.post(`/api/admin/orders/${id}/complete-delivery`, body)),
   /**
    * Takes a refunded amount back off the seller.
    *

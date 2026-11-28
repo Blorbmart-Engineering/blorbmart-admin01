@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { Download, RefreshCw, Search, ShoppingBag, Store, Undo2 } from 'lucide-react'
+import { CheckCircle2, Download, RefreshCw, Search, ShoppingBag, Store, Undo2 } from 'lucide-react'
 import { adminApi, errorMessage, type Row } from '../lib/api'
 import { ago, dateTime, money, pick, shortId, text } from '../lib/format'
 import {
@@ -20,6 +20,12 @@ import {
   Toolbar,
   type Column,
 } from '../components/ui'
+
+const ORDER_VIEWS = [
+  { value: 'ready_for_delivery', label: 'Ready for delivery' },
+  { value: 'successful', label: 'Successful orders' },
+  { value: 'all', label: 'All orders' },
+]
 
 /**
  * Orders.
@@ -153,7 +159,7 @@ export default function Orders() {
     <>
       <PageHeader
         title="Orders"
-        subtitle="Every order placed across the marketplace."
+        subtitle="Keep paid, vendor-accepted orders separate from completed order history."
         actions={
           <>
             <Button
@@ -175,6 +181,19 @@ export default function Orders() {
         }
       />
 
+      <div className="flex flex-wrap gap-2">
+        {ORDER_VIEWS.map((view) => (
+          <Button
+            key={view.value}
+            size="sm"
+            variant={status === view.value ? 'primary' : 'outline'}
+            onClick={() => setParam('status', view.value)}
+          >
+            {view.label}
+          </Button>
+        ))}
+      </div>
+
       <Card
         bodyClassName="p-0"
         title={
@@ -185,6 +204,8 @@ export default function Orders() {
               <option value="preparing">Preparing</option>
               <option value="on_the_way">On the way</option>
               <option value="delivered">Delivered</option>
+              <option value="ready_for_delivery">Ready for delivery</option>
+              <option value="successful">Successful orders</option>
               <option value="cancelled">Cancelled</option>
             </Select>
             <Select
@@ -560,6 +581,7 @@ function OrderDetail({ order, reconciliation, loading }: { order: Row; reconcili
   return (
     <div className="space-y-5">
       <AdminRiderAssignment order={order} />
+      <ManualDeliveryCompletion order={order} />
       <Card title="Money reconciliation">
         {loading ? <p className="text-[12.5px] text-ink-faint">Loading payment and wallet records…</p> : reconciliation ? <div className="grid gap-2 sm:grid-cols-2">
           <Detail label="Paid">{money(reconciliation.payment?.paid)}</Detail>
@@ -633,6 +655,89 @@ function OrderDetail({ order, reconciliation, loading }: { order: Row; reconcili
 function actionKey(prefix: string) {
   const random = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
   return `${prefix}-${random}`
+}
+
+function ManualDeliveryCompletion({ order }: { order: Row }) {
+  const id = String(pick(order, 'orderId', 'id') ?? '')
+  const currentRiderId = String(pick(order, 'riderId') ?? '')
+  const status = String(pick(order, 'orderStatus', 'status') ?? '').toLowerCase()
+  const payment = String(pick(order, 'paymentStatus') ?? '').toLowerCase()
+  const [riderId, setRiderId] = useState(currentRiderId)
+  const [reason, setReason] = useState('')
+  const [secondAdminId, setSecondAdminId] = useState('')
+  useEffect(() => setRiderId(currentRiderId), [id, currentRiderId])
+  const options = useQuery({
+    queryKey: ['manual-delivery-riders', id],
+    queryFn: () => adminApi.riderAssignmentOptions(id),
+    enabled: Boolean(id),
+    staleTime: 10_000,
+  })
+  const queryClient = useQueryClient()
+  const complete = useMutation({
+    mutationFn: () => adminApi.completeManualDelivery(id, {
+      riderId,
+      reason: reason.trim(),
+      actionKey: actionKey('manual-delivery'),
+      secondAdminId: secondAdminId.trim() || undefined,
+    }),
+    onSuccess: () => {
+      toast.success('Delivery completed and rider payout settled.')
+      setReason('')
+      setSecondAdminId('')
+      queryClient.invalidateQueries({ queryKey: ['orders'] })
+      queryClient.invalidateQueries({ queryKey: ['order-reconciliation', id] })
+      queryClient.invalidateQueries({ queryKey: ['rider-assignment-options', id] })
+    },
+    onError: (error) => toast.error(errorMessage(error, 'Could not complete that delivery.')),
+  })
+  const riders = options.data?.riders ?? []
+  const closed = ['delivered', 'cancelled', 'refunded', 'failed'].includes(status)
+  const paid = ['paid', 'completed', 'success'].includes(payment)
+
+  return (
+    <Card title="Manual delivery completion">
+      <div className="space-y-3">
+        <p className="text-[12.5px] leading-relaxed text-ink-soft">
+          Use only when the order was physically delivered but the customer PIN was unavailable.
+          Select the rider who actually delivered it; the normal rider payout and audit record will be created.
+        </p>
+        {closed ? (
+          <p className="text-[12.5px] text-ink-faint">This order is already {status || 'closed'}.</p>
+        ) : !paid ? (
+          <p className="text-[12.5px] font-semibold text-warn">Only paid orders can be completed.</p>
+        ) : options.isError ? (
+          <p className="text-[12.5px] text-bad">{errorMessage(options.error, 'Could not load active riders.')}</p>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] md:items-end">
+            <Select label="Rider who delivered" value={riderId} onChange={(event) => setRiderId(event.target.value)} disabled={complete.isPending || options.isLoading}>
+              <option value="">Choose a riderâ€¦</option>
+              {riders.map((rider) => (
+                <option key={rider.uid} value={rider.uid}>
+                  {rider.name} Â· {rider.vehicleType || 'vehicle not set'}
+                </option>
+              ))}
+            </Select>
+            <Textarea label="Required reason" rows={2} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Customer received the order; PIN unavailable" />
+            <Input label="Second admin ID if changing a picked-up rider" value={secondAdminId} onChange={(event) => setSecondAdminId(event.target.value)} placeholder="Required only for a picked-up reassignment" />
+            <div className="md:col-span-3 flex items-center justify-between gap-3">
+              <p className="text-[11.5px] text-ink-faint">
+                {currentRiderId ? `Currently assigned rider: ${String(pick(order, 'riderName') ?? currentRiderId)}.` : 'No rider is currently assigned.'}
+              </p>
+              <Button
+                variant="primary"
+                icon={CheckCircle2}
+                loading={complete.isPending}
+                disabled={!riderId || reason.trim().length < 5 || complete.isPending}
+                onClick={() => complete.mutate()}
+              >
+                Complete as delivered
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </Card>
+  )
 }
 
 function AdminRiderAssignment({ order }: { order: Row }) {
