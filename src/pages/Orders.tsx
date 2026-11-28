@@ -68,6 +68,17 @@ export default function Orders() {
     setPage(1)
   }
 
+  useEffect(() => {
+    const nextQuery = search.trim()
+    if (nextQuery === q) return undefined
+    const timer = window.setTimeout(() => setParam('q', nextQuery), 300)
+    return () => window.clearTimeout(timer)
+  }, [search, q])
+
+  useEffect(() => {
+    if (search !== q) setSearch(q)
+  }, [q])
+
   const orders = useQuery({
     queryKey: ['orders', status, paymentStatus, q, page],
     queryFn: () => adminApi.orders({ status, paymentStatus, q, page, limit: 50 }),
@@ -229,7 +240,7 @@ export default function Orders() {
             >
               <Input
                 label="Search"
-                placeholder="Order id, buyer, phone"
+                placeholder="Search order, buyer, phone…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-56"
@@ -575,6 +586,19 @@ function deliveryBasis(meta: Row | undefined) {
   return mode || '—'
 }
 
+function orderAddress(order: Row) {
+  const value = pick<unknown>(order, 'deliveryAddress', 'address', 'shippingAddress')
+  if (typeof value === 'string') return value
+  if (value && typeof value === 'object') {
+    const address = value as Row
+    return [address.addressLine1, address.street, address.landmark, address.city, address.state]
+      .filter(Boolean)
+      .filter((part, index, parts) => parts.indexOf(part) === index)
+      .join(', ')
+  }
+  return undefined
+}
+
 function OrderDetail({ order, reconciliation, loading }: { order: Row; reconciliation: Row | null; loading: boolean }) {
   const items = (pick<unknown[]>(order, 'items', 'orderItems') ?? []) as Row[]
 
@@ -621,9 +645,7 @@ function OrderDetail({ order, reconciliation, loading }: { order: Row; reconcili
           <Detail label="Phone">{text(pick(order, 'customerPhone', 'phone'))}</Detail>
           <Detail label="Store">{text(pick(order, 'storeName', 'vendorName'))}</Detail>
           <Detail label="Rider">{text(pick(order, 'riderName', 'riderId'))}</Detail>
-          <Detail label="Address">
-            {text(pick(order, 'deliveryAddress.addressLine1', 'address.addressLine1', 'deliveryAddress'))}
-          </Detail>
+          <Detail label="Delivery address">{text(orderAddress(order))}</Detail>
           <Detail label="Campus">{text(pick(order, 'universityName', 'universityId'))}</Detail>
         </div>
       </div>
